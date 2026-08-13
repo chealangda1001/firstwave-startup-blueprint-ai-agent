@@ -42,6 +42,33 @@ a guided interview that turns a founder's raw idea into a structured,
   confirm → login → create session → send message → transcript persists and
   reloads correctly; RLS/cascade delete confirmed clean.
 
+## Phase 3 — LLM wiring (Anthropic)
+
+- `src/lib/blueprint/system-prompt.ts` loads `docs/blueprint-agent-system-prompt.md`
+  verbatim and appends a short adapter block that maps the persona's
+  behavior onto structured output instead of freeform chat.
+- `src/lib/blueprint/schemas.ts` — two Zod schemas used as Claude's
+  structured output format (`output_config.format`): a small per-turn
+  envelope (`reply_markdown`, `log_message`, stage/canvas bookkeeping) sent
+  on every turn, and the full 9-section blueprint artifact sent once, when
+  the interview completes — keeping the cheap per-turn call cheap.
+- `src/lib/blueprint/agent.ts` — `runAgentTurn()` (model `claude-opus-5`,
+  thinking disabled, effort `medium` — fast conversational turns) and
+  `generateBlueprintArtifact()` (adaptive thinking, effort `high` — the
+  final synthesis call). System prompt is cache-marked (`cache_control:
+  ephemeral`) since it's large and reused on every call.
+- `src/lib/blueprint/persist.ts` maps the model's output onto the
+  `blueprints` table, matching the OUTPUT CONTRACT shape.
+- `/dashboard` "+ New session" and `/sessions/[id]` "Send" now call the real
+  agent; `session_status: "complete"` triggers a second call that generates
+  and saves the full blueprint, surfaced at `/sessions/[id]/blueprint`.
+  Both calls are wrapped so a model/API failure logs an inline error and
+  leaves the session resumable rather than crashing the page.
+- Verified end-to-end with real API calls: canvas selection reasoning,
+  Stage 0 opener + Q1.1, and a live pushback/quality-gate follow-up (thin
+  answer → lead-through examples → sharper question) all matched the
+  system prompt exactly; domain detection persisted correctly.
+
 ## Getting started
 
 ### 1. Supabase project
@@ -89,7 +116,5 @@ All founder-owned tables are RLS-protected to `auth.uid() = founder_id`
 
 ## Next phases (not yet built)
 
-- Phase 3: LLM wiring (Anthropic) driving the agent per the system prompt —
-  Stage 0 domain detection, one-question-at-a-time flow, quality gates,
-  follow-ups, and Section 4–9 generation
-- Phase 4: Blueprint rendering + branded PDF export
+- Phase 4: branded PDF export of the generated blueprint (the in-app
+  `/sessions/[id]/blueprint` view exists; export to PDF does not yet)
