@@ -205,6 +205,66 @@ Open [http://localhost:3000](http://localhost:3000).
 All founder-owned tables are RLS-protected to `auth.uid() = founder_id`
 (directly or via the parent `sessions` row).
 
+## Admin backend
+
+A completely separate `/admin` surface for internal ops — different layout,
+different palette (slate/indigo, always-light), no shared nav with the
+founder app. Built with [shadcn/ui](https://ui.shadcn.com) (Base UI under
+the hood, not Radix — see the note on the `render` prop below if you add
+more components).
+
+- **Access control, both layers.** `profiles.is_admin` (migration `0004_admin.sql`)
+  is the actual gate: RLS policies (`public.is_admin()` helper, `security
+  definer`) grant admins read access to `profiles`, `sessions`,
+  `session_messages`, and `blueprints` across every founder, plus full
+  CRUD on `knowledge_base`. `src/app/admin/layout.tsx` checks the same flag
+  server-side and redirects non-admins to `/dashboard` — belt and suspenders,
+  but RLS is the one that actually matters if the route check were ever
+  bypassed. **The first admin is set manually**:
+  ```sql
+  update public.profiles set is_admin = true where email = 'you@example.com';
+  ```
+- **Knowledge base** (`/admin/knowledge-base`) — full CRUD on `knowledge_base`
+  cards: title, domain tag, card type (founder lesson / market context /
+  lead-through example), active toggle. List + create/edit dialog +
+  delete-confirm, all shadcn (`Table`, `Dialog`, `AlertDialog`, `Select`,
+  `Switch`).
+- **Session oversight** (`/admin/sessions`) — read-only table of every
+  founder's every session (status, canvas, stage), linking to a read-only
+  blueprint viewer (`/admin/sessions/[id]/blueprint`) for completed ones.
+- **Analytics** (`/admin`) — read-only counts: total signups, sessions
+  started this week/month, sessions completed, completion rate, blueprints
+  generated. No charts in V1, per spec.
+
+**Two real bugs found and fixed during verification**, both about the admin
+surface's "always light, regardless of the visitor's OS theme" requirement:
+1. shadcn's `Card`/`Badge`/etc. default to theme-aware `bg-card`/etc. CSS
+   variables; my admin components only overrode text colors, not the
+   primitives' own background, so on a dark-mode OS the cards rendered
+   dark-text-on-dark-background. Fixed by re-declaring the light `:root`
+   values as `.admin-scope` on the admin layout's root div — except:
+2. Base UI's `Dialog`/`Select`/`AlertDialog` portal their content to
+   `document.body`, which sits outside `.admin-scope` in the DOM, so a plain
+   descendant-scoped override never reached them (confirmed live — dialogs
+   still rendered dark). Fixed with `:root:has(.admin-scope) { ... }` in
+   `globals.css` instead — a `:has()` relational selector re-asserts the
+   light values at the true document root whenever any admin content is
+   mounted anywhere, which correctly cascades to portaled content too.
+
+**Base UI, not Radix.** This shadcn install uses `@base-ui/react` under the
+hood. Its trigger components take a `render` prop (`<DialogTrigger render={<Button/>} />`),
+not Radix's `asChild` (`<DialogTrigger asChild><Button/></DialogTrigger>`) —
+worth knowing before copying examples from shadcn docs/Radix-era code.
+
+Verified live end-to-end with disposable test accounts (admin-flagged and
+not): non-admin hitting `/admin` bounces to `/dashboard`; admin sees real
+analytics counts; knowledge base create/toggle/edit all persist correctly;
+session oversight shows another founder's real session (proving the
+cross-account RLS policy, not just self-access); blueprint viewer renders
+a seeded completed session correctly. All test data (including the
+bootstrap admin flag on throwaway accounts) deleted afterward — the
+project's own founder account remains the only real admin.
+
 ## Next phases (not yet built)
 
 - Phase 4: branded PDF export of the generated blueprint (the in-app

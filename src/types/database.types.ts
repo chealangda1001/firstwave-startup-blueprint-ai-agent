@@ -143,31 +143,40 @@ export type Database = {
       }
       knowledge_base: {
         Row: {
+          card_type: Database["public"]["Enums"]["knowledge_base_card_type"]
           content: string
           created_at: string
           domain: string
           id: string
+          is_active: boolean
           source: string | null
           tags: string[]
           title: string
+          updated_at: string
         }
         Insert: {
+          card_type?: Database["public"]["Enums"]["knowledge_base_card_type"]
           content: string
           created_at?: string
           domain: string
           id?: string
+          is_active?: boolean
           source?: string | null
           tags?: string[]
           title: string
+          updated_at?: string
         }
         Update: {
+          card_type?: Database["public"]["Enums"]["knowledge_base_card_type"]
           content?: string
           created_at?: string
           domain?: string
           id?: string
+          is_active?: boolean
           source?: string | null
           tags?: string[]
           title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -178,6 +187,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          is_admin: boolean
           updated_at: string
         }
         Insert: {
@@ -186,6 +196,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          is_admin?: boolean
           updated_at?: string
         }
         Update: {
@@ -194,6 +205,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          is_admin?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -329,11 +341,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       canvas_type: "lean" | "bmc"
       confidence_level: "high" | "medium" | "low"
+      knowledge_base_card_type:
+        | "founder_lesson"
+        | "market_context"
+        | "lead_through_example"
       message_role: "user" | "assistant" | "log"
       session_status: "in_progress" | "complete" | "abandoned"
     }
@@ -468,6 +484,11 @@ export const Constants = {
     Enums: {
       canvas_type: ["lean", "bmc"],
       confidence_level: ["high", "medium", "low"],
+      knowledge_base_card_type: [
+        "founder_lesson",
+        "market_context",
+        "lead_through_example",
+      ],
       message_role: ["user", "assistant", "log"],
       session_status: ["in_progress", "complete", "abandoned"],
     },
@@ -480,3 +501,5 @@ export type CanvasType = Database["public"]["Enums"]["canvas_type"]
 export type SessionStatus = Database["public"]["Enums"]["session_status"]
 export type ConfidenceLevel = Database["public"]["Enums"]["confidence_level"]
 export type MessageRole = Database["public"]["Enums"]["message_role"]
+export type KnowledgeBaseCardType =
+  Database["public"]["Enums"]["knowledge_base_card_type"]
