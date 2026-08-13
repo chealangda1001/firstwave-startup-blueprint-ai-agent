@@ -12,16 +12,35 @@ a guided interview that turns a founder's raw idea into a structured,
   for uploaded pitch decks/notes
 - `@supabase/ssr` for browser/server/middleware Supabase clients
 
-## Phase 1 — done in this pass
+## Phase 1 — Supabase schema + Next.js scaffold
 
 - Supabase schema (`supabase/migrations/0001_init.sql`, `0002_rls.sql`):
   `profiles`, `sessions`, `session_files`, `session_messages`, `blueprints`,
   `knowledge_base`, RLS policies, and a private `session-uploads` storage
-  bucket.
+  bucket. Applied to the linked hosted project; types generated with
+  `supabase gen types typescript --linked`.
 - Next.js scaffold with Supabase client/server/middleware wiring
   (`src/lib/supabase/*`, `middleware.ts`).
 - App-level types mirroring the agent's JSON output contract
   (`src/types/blueprint.ts`, `src/types/database.types.ts`).
+
+## Phase 2 — Auth + session UI
+
+- Email/password auth (`src/app/login`) with signup, login, and a
+  `/auth/confirm` route handling the confirmation-link callback
+  (`supabase.auth.verifyOtp`).
+- Protected route group `src/app/(app)` — redirects to `/login` when signed
+  out, shows the signed-in email + a sign-out button.
+- `/dashboard` — lists the founder's sessions, "+ New session" creates a row
+  in `sessions` and seeds the transcript with the Stage 0 opener + Q1.1
+  (`src/lib/blueprint/opening.ts`).
+- `/sessions/[id]` — chat-style transcript (`session_messages`) with a reply
+  form. Sending a message persists it and appends a placeholder log line —
+  **no LLM is wired up yet**; the actual agent reasoning (follow-ups, quality
+  gates, section generation) is Phase 3.
+- Verified end-to-end against the live Supabase project: signup → email
+  confirm → login → create session → send message → transcript persists and
+  reloads correctly; RLS/cascade delete confirmed clean.
 
 ## Getting started
 
@@ -70,6 +89,7 @@ All founder-owned tables are RLS-protected to `auth.uid() = founder_id`
 
 ## Next phases (not yet built)
 
-- Phase 2: Auth + session UI (start session, chat interface, Stage 0–9 flow)
-- Phase 3: LLM wiring (Anthropic) driving the agent per the system prompt
+- Phase 3: LLM wiring (Anthropic) driving the agent per the system prompt —
+  Stage 0 domain detection, one-question-at-a-time flow, quality gates,
+  follow-ups, and Section 4–9 generation
 - Phase 4: Blueprint rendering + branded PDF export
