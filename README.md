@@ -97,6 +97,30 @@ exact vagueness the quality gates are supposed to catch.
   options, the following frequency/cost question correctly returned null),
   and tapping a chip submits and persists exactly as designed.
 
+## Chat UX fixes
+
+Real usage surfaced three problems, all fixed:
+
+- **Bundled questions.** A low-effort founder reply ("hi") could make the
+  model compress several sub-questions into one "fill in the blanks" list —
+  a real violation of the system prompt's "one question at a time" rule.
+  `system-prompt.ts` now has an explicit, forceful block with a labeled
+  bad/good example matching the exact failure pattern observed.
+- **Raw markdown showing as literal text.** Chat bubbles rendered
+  `message.content` as a plain string, so the model's `**bold**` and list
+  syntax showed up as literal asterisks. `message-content.tsx` now renders
+  through `react-markdown` instead.
+- **No loading feedback.** `reply-composer.tsx` now shows a rotating status
+  bubble ("Reading your answer…" → "Checking it against the quality
+  gate…" → "Weighing what to ask next…" → "Almost there…", cycling every
+  1.6s) plus a spinner + "Sending…" state on the Send button, so the
+  10-20s agent round trip doesn't feel like a stalled page.
+
+Verified live against the exact scenario that surfaced the bug (reply "hi"
+to Q1.1): confirmed a single clean question comes back with one lead-through
+example, clean markdown rendering, and both loading indicators animating
+correctly through a real request.
+
 ## Getting started
 
 ### 1. Supabase project

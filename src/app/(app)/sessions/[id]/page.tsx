@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { sendMessage } from "./actions";
 import { ReplyComposer, type QuickReply } from "./reply-composer";
+import { MessageContent } from "./message-content";
 
 const ROLE_STYLE: Record<string, string> = {
   assistant:
@@ -83,7 +84,7 @@ export default async function SessionPage({
               ROLE_STYLE[message.role] ?? ROLE_STYLE.assistant
             }`}
           >
-            {message.content}
+            <MessageContent content={message.content} />
           </div>
         ))}
       </div>

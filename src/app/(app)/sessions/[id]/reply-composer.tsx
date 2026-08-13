@@ -1,10 +1,60 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 export interface QuickReply {
   label: string;
   value: string;
+}
+
+const WORKING_PHRASES = [
+  "Reading your answer…",
+  "Checking it against the quality gate…",
+  "Weighing what to ask next…",
+  "Almost there…",
+];
+
+/**
+ * Cycles through WORKING_PHRASES every ~1.6s while `active` is true, to make
+ * the ~10-20s agent round trip feel shorter than a static spinner would.
+ */
+function useWorkingPhrase(active: boolean) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (!active) return;
+    const interval = setInterval(() => {
+      setIndex((i) => (i + 1) % WORKING_PHRASES.length);
+    }, 1600);
+    return () => clearInterval(interval);
+  }, [active]);
+
+  return WORKING_PHRASES[index];
+}
+
+function Spinner() {
+  return (
+    <svg
+      className="h-3.5 w-3.5 animate-spin"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-90"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+      />
+    </svg>
+  );
 }
 
 /**
@@ -24,6 +74,7 @@ export function ReplyComposer({
 }) {
   const [isPending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const workingPhrase = useWorkingPhrase(isPending);
 
   function submitValue(value: string) {
     const formData = new FormData();
@@ -53,6 +104,13 @@ export function ReplyComposer({
 
   return (
     <div className="mt-4 flex flex-col gap-3">
+      {isPending && (
+        <div className="flex items-center gap-2 self-start rounded-2xl border border-dashed border-black/[.15] px-4 py-2 text-xs italic text-zinc-500 dark:border-white/[.2] dark:text-zinc-500">
+          <Spinner />
+          <span>{workingPhrase}</span>
+        </div>
+      )}
+
       {quickReplies && quickReplies.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           {quickReplies.map((q) => {
@@ -112,9 +170,16 @@ export function ReplyComposer({
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
+          className="flex min-w-[92px] items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
         >
-          Send
+          {isPending ? (
+            <>
+              <Spinner />
+              Sending…
+            </>
+          ) : (
+            "Send"
+          )}
         </button>
       </form>
     </div>
