@@ -39,12 +39,16 @@ export async function createSession() {
           role: "log",
           stage: opening.current_stage,
           content: opening.log_message,
+          quick_replies: null,
+          quick_replies_multi_select: false,
         },
         {
           session_id: session.id,
           role: "assistant",
           stage: opening.current_stage,
           content: opening.reply_markdown,
+          quick_replies: opening.quick_replies,
+          quick_replies_multi_select: opening.quick_replies_multi_select ?? false,
         },
       ]);
 

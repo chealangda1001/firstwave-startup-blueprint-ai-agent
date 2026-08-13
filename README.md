@@ -69,6 +69,34 @@ a guided interview that turns a founder's raw idea into a structured,
   answer → lead-through examples → sharper question) all matched the
   system prompt exactly; domain detection persisted correctly.
 
+## Quick-reply chips
+
+Bounded/categorical questions (tech sophistication, same-vs-different
+decision maker, yes/no confirmations) can offer tappable answer choices
+alongside the always-present free-text box, instead of forcing every answer
+through prose. Narrative questions (describe a person, describe your
+advantage) stay free-text-only — a chip would let the founder skip past the
+exact vagueness the quality gates are supposed to catch.
+
+- `TurnEnvelopeSchema` (`src/lib/blueprint/schemas.ts`) gained
+  `quick_replies` (nullable array of `{label, value}`) and
+  `quick_replies_multi_select`. The system prompt adapter
+  (`src/lib/blueprint/system-prompt.ts`) tells the model exactly when to
+  populate them — defaulting to null (free text) whenever it's unsure.
+- `session_messages` gained `quick_replies jsonb` and
+  `quick_replies_multi_select boolean not null default false`
+  (`supabase/migrations/0003_quick_replies.sql`) so chips still render
+  correctly after a page refresh, not just right after generation.
+- `src/app/(app)/sessions/[id]/reply-composer.tsx` (client component)
+  renders the chips above the textbox. Picking a chip submits that answer
+  immediately (single-select) or toggles it with a "Continue" button
+  (multi-select, rare); the textbox always stays available for a custom
+  answer.
+- Verified end-to-end: the model correctly emits chips only for bounded
+  questions (tested live — tech-sophistication question returned 3 well-formed
+  options, the following frequency/cost question correctly returned null),
+  and tapping a chip submits and persists exactly as designed.
+
 ## Getting started
 
 ### 1. Supabase project

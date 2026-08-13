@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { sendMessage } from "./actions";
+import { ReplyComposer, type QuickReply } from "./reply-composer";
 
 const ROLE_STYLE: Record<string, string> = {
   assistant:
@@ -30,12 +31,26 @@ export default async function SessionPage({
 
   const { data: messages } = await supabase
     .from("session_messages")
-    .select("id, role, content, stage, created_at")
+    .select(
+      "id, role, content, stage, created_at, quick_replies, quick_replies_multi_select"
+    )
     .eq("session_id", id)
     .order("created_at", { ascending: true });
 
   const isComplete = session.status === "complete";
   const boundSendMessage = sendMessage.bind(null, id);
+
+  // Quick replies only make sense on the most recent turn — once the
+  // conversation has moved on, earlier questions are already answered.
+  const lastMessage = messages?.[messages.length - 1];
+  const quickReplies: QuickReply[] | null =
+    lastMessage?.role === "assistant" && lastMessage.quick_replies
+      ? (lastMessage.quick_replies as unknown as QuickReply[])
+      : null;
+  const quickRepliesMultiSelect =
+    lastMessage?.role === "assistant"
+      ? Boolean(lastMessage.quick_replies_multi_select)
+      : false;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-8">
@@ -74,21 +89,12 @@ export default async function SessionPage({
       </div>
 
       {!isComplete && (
-        <form action={boundSendMessage} className="mt-4 flex items-end gap-2">
-          <textarea
-            name="content"
-            required
-            rows={2}
-            placeholder="Type your answer…"
-            className="flex-1 resize-none rounded-xl border border-black/[.12] bg-white px-3 py-2 text-sm outline-none focus:border-zinc-950 dark:border-white/[.15] dark:bg-zinc-950 dark:focus:border-zinc-50"
-          />
-          <button
-            type="submit"
-            className="rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
-          >
-            Send
-          </button>
-        </form>
+        <ReplyComposer
+          key={lastMessage?.id}
+          sendMessage={boundSendMessage}
+          quickReplies={quickReplies}
+          multiSelect={quickRepliesMultiSelect}
+        />
       )}
     </div>
   );

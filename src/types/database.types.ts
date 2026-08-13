@@ -241,6 +241,8 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          quick_replies: Json | null
+          quick_replies_multi_select: boolean
           role: Database["public"]["Enums"]["message_role"]
           session_id: string
           stage: string | null
@@ -249,6 +251,8 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          quick_replies?: Json | null
+          quick_replies_multi_select?: boolean
           role: Database["public"]["Enums"]["message_role"]
           session_id: string
           stage?: string | null
@@ -257,6 +261,8 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          quick_replies?: Json | null
+          quick_replies_multi_select?: boolean
           role?: Database["public"]["Enums"]["message_role"]
           session_id?: string
           stage?: string | null

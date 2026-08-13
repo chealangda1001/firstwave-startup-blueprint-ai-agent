@@ -12,6 +12,15 @@ import { z } from "zod";
 
 const confidence = z.enum(["high", "medium", "low"]);
 
+const quickReply = z.object({
+  label: z.string().describe("Short button text, e.g. 'Medium'."),
+  value: z
+    .string()
+    .describe(
+      "The full text submitted as the founder's answer when this option is picked — written as if the founder said it themselves, e.g. 'Medium — comfortable with everyday apps but hasn't paid for software before.'"
+    ),
+});
+
 export const TurnEnvelopeSchema = z.object({
   log_message: z
     .string()
@@ -52,6 +61,18 @@ export const TurnEnvelopeSchema = z.object({
     .enum(["in_progress", "complete"])
     .describe(
       "'complete' only once Section 9 has been asked and answered and you are ready to generate the final blueprint artifact."
+    ),
+  quick_replies: z
+    .array(quickReply)
+    .nullable()
+    .describe(
+      "2-5 tappable answer choices, ONLY for genuinely bounded/categorical questions (tech sophistication, same-vs-different decision maker, yes/no confirmations, pricing-intentional-or-not checks). Null for every narrative question (describe a person, describe your advantage, etc.) — those need the founder's own unique detail and a chip would be meaningless. Never turn lead-through examples into quick_replies; those are illustrations, not answer choices for the founder."
+    ),
+  quick_replies_multi_select: z
+    .boolean()
+    .nullable()
+    .describe(
+      "True only on the rare question where more than one option can apply at once. Null/false otherwise (the default — picking one option submits it immediately)."
     ),
 });
 

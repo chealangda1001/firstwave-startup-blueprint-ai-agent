@@ -72,12 +72,16 @@ export async function sendMessage(sessionId: string, formData: FormData) {
         role: "log",
         stage: turn.current_stage,
         content: turn.log_message,
+        quick_replies: null,
+        quick_replies_multi_select: false,
       },
       {
         session_id: sessionId,
         role: "assistant",
         stage: turn.current_stage,
         content: turn.reply_markdown,
+        quick_replies: turn.quick_replies,
+        quick_replies_multi_select: turn.quick_replies_multi_select ?? false,
       },
     ]);
 
