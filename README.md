@@ -121,6 +121,45 @@ to Q1.1): confirmed a single clean question comes back with one lead-through
 example, clean markdown rendering, and both loading indicators animating
 correctly through a real request.
 
+## Chat UX round 2
+
+A second pass on real usage:
+
+- **One wall-of-text bubble → several short ones.** `split-blocks.ts` splits
+  a reply on markdown paragraph boundaries (blank lines); `assistant-message.tsx`
+  renders each as its own bubble. Only the newest turn reveals bubbles one
+  at a time (~700ms apart, fade-in), so it reads like someone typing several
+  messages instead of a bot dumping a paragraph — older turns render fully,
+  immediately, no replay on refresh.
+- **log_message lingering as a permanent bubble.** It was meant as transient
+  "what am I doing" transparency, not a permanent transcript entry — role
+  `log` rows are now filtered out of the rendered transcript entirely (the
+  composer's existing "working…" indicator already covers the same purpose
+  and disappears the instant the real reply lands).
+- **Tool/method-choice questions missing quick-reply chips.** "What is he
+  using today — Excel, OTA extranets, a PMS, WhatsApp, paper?" is bounded
+  (the agent names the candidates itself) but wasn't triggering chips.
+  Broadened the `quick_replies` guidance in `system-prompt.ts` to cover any
+  question where the agent enumerates specific tool/method candidates.
+- **Design system.** Switched the UI font from Geist to Inter with a full
+  system-font fallback stack (found and fixed a real bug along the way: a
+  legacy unlayered `font-family: Arial...` rule in `globals.css` was silently
+  beating Tailwind's `font-sans` utility). Added a ChatGPT-style right-edge
+  minimap (`chat-transcript.tsx`) — tick marks per turn, click to jump — and
+  a floating "scroll to latest" button that appears once you've scrolled
+  away from the bottom.
+
+Found and fixed a second real bug during verification: the transcript box
+had no bounded height, so the whole page scrolled instead of the box
+scrolling internally, and the one-time "scroll to bottom on mount" landed
+wherever content happened to be *before* the newest reply finished its
+staggered block reveal. Fixed with a capped `max-h-[65vh]` on the box plus
+a `ResizeObserver`-driven "stick to bottom while streaming" pattern (stays
+pinned to the bottom as blocks reveal, unless the founder has deliberately
+scrolled up to read earlier messages). Verified live: confirmed the box
+scrolls internally, lands at the true bottom, the button appears/disappears
+correctly, and minimap tick clicks jump to the right message.
+
 ## Getting started
 
 ### 1. Supabase project

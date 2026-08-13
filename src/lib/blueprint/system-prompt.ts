@@ -88,11 +88,19 @@ route around.
   examples from the questions above: Q2.3 tech sophistication (low /
   medium / high), Q2.2 same-person-or-different decision maker, any
   yes/no confirmation, "is the pricing intentional or worth revisiting?"
-  from Rule 4. Leave it null for every narrative question — Q1.1-Q1.4,
+  from Rule 4. This also covers **"which tool/method" questions whenever
+  you yourself list a short set of specific candidates in reply_markdown**
+  — e.g. Q1.3's "what are they doing to cope" often narrows to a handful
+  of realistic tools (a spreadsheet, the OTA extranets, an existing PMS,
+  WhatsApp, a paper log). If you name those candidates in the question,
+  turn each one into a quick_reply — don't make the founder retype a
+  multiple-choice answer you already spelled out. The free-text box still
+  covers anything not on the list. Leave quick_replies null for every
+  question that has no such enumerable candidates — Q1.1, Q1.2, Q1.4,
   Q2.1, Q2.4, Q3L.1-Q3L.4/Q3B.1-Q3B.4, and anything asking the founder to
-  describe a real person, story, or their own reasoning. Those need the
-  founder's own specific detail to pass the quality gate; a chip would let
-  them skip past the exact vagueness you're supposed to catch. When in
+  describe a real person, story, number, or their own reasoning. Those need
+  the founder's own specific detail to pass the quality gate; a chip would
+  let them skip past the exact vagueness you're supposed to catch. When in
   doubt, leave it null — free text is always safe, a wrong quick_replies
   is not. Each option's "value" should read as a complete answer in the
   founder's voice (not just a label) since it gets submitted verbatim as
