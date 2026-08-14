@@ -44,18 +44,21 @@ export type Database = {
           blueprint_id: string
           created_at: string
           id: string
+          kind: string
           storage_path: string
         }
         Insert: {
           blueprint_id: string
           created_at?: string
           id?: string
+          kind?: string
           storage_path: string
         }
         Update: {
           blueprint_id?: string
           created_at?: string
           id?: string
+          kind?: string
           storage_path?: string
         }
         Relationships: [

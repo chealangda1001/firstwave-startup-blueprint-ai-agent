@@ -56,8 +56,17 @@ async function launchBrowser(): Promise<Browser> {
  * Renders a self-contained HTML string (see pdf-template.ts) to a PDF
  * buffer. No navigation, no external resources — setContent + waitUntil is
  * enough since the HTML has no images/fonts to fetch.
+ *
+ * `landscape` defaults to false (the multi-page report); the one-page
+ * canvas poster (canvas-poster-template.ts) passes true — its @page rule
+ * already declares "A4 landscape" for on-screen/print CSS purposes, but
+ * Puppeteer's own `landscape` PDF option is what actually rotates the
+ * physical page, so both need to agree.
  */
-export async function renderHtmlToPdf(html: string): Promise<Buffer> {
+export async function renderHtmlToPdf(
+  html: string,
+  { landscape = false }: { landscape?: boolean } = {}
+): Promise<Buffer> {
   const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
@@ -66,6 +75,7 @@ export async function renderHtmlToPdf(html: string): Promise<Buffer> {
     await page.setContent(html, { waitUntil: "load" });
     const pdf = await page.pdf({
       format: "a4",
+      landscape,
       printBackground: true,
       margin: { top: "0", bottom: "0", left: "0", right: "0" },
     });

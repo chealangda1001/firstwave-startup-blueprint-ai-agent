@@ -9,15 +9,25 @@ import { getBlueprintPdfUrl } from "./actions";
  * every click after that reuses the cached one and is near-instant (see
  * getBlueprintPdfUrl). Opens in a new tab rather than a same-tab
  * navigation so the founder never loses their place in the app.
+ *
+ * `kind` picks which PDF variant: the full written report, or the
+ * one-page printable canvas poster (Lean Canvas / BMC) meant to be pinned
+ * on a wall.
  */
 const DEFAULT_CLASSNAME =
   "rounded-full bg-zinc-950 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200";
 
 export function DownloadPdfButton({
   sessionId,
+  kind = "report",
+  label,
+  pendingLabel,
   className,
 }: {
   sessionId: string;
+  kind?: "report" | "canvas_poster";
+  label?: string;
+  pendingLabel?: string;
   className?: string;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -37,7 +47,7 @@ export function DownloadPdfButton({
 
     startTransition(async () => {
       try {
-        const url = await getBlueprintPdfUrl(sessionId);
+        const url = await getBlueprintPdfUrl(sessionId, kind);
         if (pdfTab) {
           pdfTab.location.href = url;
         } else {
@@ -62,7 +72,7 @@ export function DownloadPdfButton({
       disabled={isPending}
       className={className ?? DEFAULT_CLASSNAME}
     >
-      {isPending ? "Preparing PDF…" : "Download PDF"}
+      {isPending ? pendingLabel ?? "Preparing PDF…" : label ?? "Download PDF"}
     </button>
   );
 }
