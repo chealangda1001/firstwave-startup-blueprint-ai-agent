@@ -108,7 +108,18 @@ const bmcFields = z.object({
   revenue_streams: z.string(),
 });
 
-export const BlueprintArtifactSchema = z.object({
+// Split into two schemas, sent as two separate structured-output calls
+// (see generateBlueprintArtifact in agent.ts), rather than one combined
+// BlueprintArtifactSchema. The single-schema version reliably triggered
+// "The compiled grammar is too large" from Anthropic in production —
+// confirmed empirically (not model- or effort-dependent: every
+// model/effort combination failed identically) that the full 9-section
+// schema sits over Anthropic's structured-output grammar-compilation
+// budget, while either half compiles and runs fine on its own. The two
+// calls run in parallel and their results are merged back into the same
+// BlueprintArtifactOutput shape every downstream consumer (persist.ts,
+// pdf-template.ts, canvas-poster-template.ts) already expects.
+export const BlueprintArtifactPartASchema = z.object({
   canvas_type: z.enum(["lean", "bmc"]),
   section_1_problem: z.object({
     existence: z.string(),
@@ -144,6 +155,9 @@ export const BlueprintArtifactSchema = z.object({
     finance: z.string(),
     gaps: z.array(z.string()),
   }),
+});
+
+export const BlueprintArtifactPartBSchema = z.object({
   section_6_risks: z.array(
     z.object({
       assumption: z.string(),
@@ -164,5 +178,9 @@ export const BlueprintArtifactSchema = z.object({
     narrative: z.string(),
   }),
 });
+
+export const BlueprintArtifactSchema = BlueprintArtifactPartASchema.merge(
+  BlueprintArtifactPartBSchema
+);
 
 export type BlueprintArtifactOutput = z.infer<typeof BlueprintArtifactSchema>;

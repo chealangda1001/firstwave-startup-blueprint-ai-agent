@@ -161,7 +161,15 @@ export default async function SessionPage({
               </div>
             );
           })}
-          <PendingUserBubble />
+          {/* ReplyComposer is what clears the optimistic pending bubble
+              once a turn lands (see its mount effect) — but it unmounts
+              entirely, rather than remounting, once the session reaches
+              "generating"/"complete", so it never gets the chance to clear
+              this. Gating rendering here the same way ReplyComposer's own
+              visibility is gated prevents the now-persisted message from
+              briefly appearing twice: once for real in the transcript
+              above, once as a stale optimistic echo down here. */}
+          {!isComplete && !isGenerating && <PendingUserBubble />}
         </ChatTranscript>
 
         {isGenerating && <GenerateBlueprintPanel sessionId={id} />}

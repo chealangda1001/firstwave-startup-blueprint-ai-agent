@@ -239,10 +239,16 @@ export async function generateBlueprintForSession(
   if (session.founder_id !== user.id) {
     return { ok: false, message: "You don't have access to this session." };
   }
-  // Already done, or not actually waiting on this step (e.g. a stale
-  // client retriggering after a previous failure already reset status) —
-  // either way, nothing to do here.
-  if (session.status !== "generating") return { ok: true };
+  // Already done ("complete") or not applicable ("abandoned") — nothing to
+  // do here. Deliberately allows both "generating" (the normal
+  // auto-triggered call) and "in_progress" (a manual Retry click from
+  // GenerateBlueprintPanel after a previous failure already reset status
+  // back to in_progress) — without allowing "in_progress" here, clicking
+  // Retry after a failure would silently no-op forever, since the first
+  // failure's own cleanup is what put it in that state.
+  if (session.status !== "generating" && session.status !== "in_progress") {
+    return { ok: true };
+  }
 
   const { data: priorMessages } = await supabase
     .from("session_messages")

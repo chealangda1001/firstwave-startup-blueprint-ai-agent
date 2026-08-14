@@ -3,7 +3,8 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { anthropic } from "./anthropic-client";
 import { BLUEPRINT_SYSTEM_PROMPT } from "./system-prompt";
 import {
-  BlueprintArtifactSchema,
+  BlueprintArtifactPartASchema,
+  BlueprintArtifactPartBSchema,
   TurnEnvelopeSchema,
   type BlueprintArtifactOutput,
   type TurnEnvelope,
@@ -158,44 +159,71 @@ export async function runAgentTurn(
   );
 }
 
+const GENERATE_ARTIFACT_PART_B_MESSAGE =
+  "[GENERATE BLUEPRINT — PART 2] Same brief as before: the interview above is complete. This time produce only section_6_risks, section_7_roadmap, section_8_open_questions, and section_9_founder_market_fit, grounded in everything discussed. Flag gaps honestly per Rule 8 rather than inventing answers.";
+
 /**
  * Synthesizes the full 9-section blueprint artifact from the completed
  * transcript. Called once, when a turn's session_status flips to "complete".
+ *
+ * Issued as two parallel structured-output calls (Part A: canvas_type +
+ * sections 1-5, Part B: sections 6-9), not one — confirmed empirically in
+ * production and via direct testing against the Anthropic API that the
+ * full 9-section schema in one call reliably triggers "the compiled
+ * grammar is too large", on every model and effort level (not a
+ * Sonnet-vs-Opus thing — the schema itself is over Anthropic's
+ * structured-output grammar-compilation budget). Either half compiles and
+ * completes fine on its own. Runs in parallel rather than sequentially so
+ * this doesn't cost the founder two round-trips' worth of wait.
+ *
  * Uses its own admin-configurable model (settings.artifact_model), not
- * runAgentTurn's — deliberately decoupled (migration 0021): a Sonnet 5
- * conversational-turn latency win previously broke this call outright in
- * production ("the compiled grammar is too large" from Anthropic — the
- * full BlueprintArtifactSchema is too complex for Sonnet 5's
- * structured-output grammar compiler, a limit Opus tolerates). Synthesis
- * only runs once per session and isn't latency-sensitive the way a live
- * turn is, so it can afford a heavier default model.
+ * runAgentTurn's (migration 0021) — synthesis only runs once per session
+ * and isn't latency-sensitive the way a live turn is, so it can afford a
+ * heavier default model than the conversation.
  */
 export async function generateBlueprintArtifact(
   history: HistoryMessage[]
 ): Promise<BlueprintArtifactOutput> {
-  const messages = [
-    ...history,
-    { role: "user" as const, content: GENERATE_ARTIFACT_MESSAGE },
-  ];
-
   const settings = await getSiteSettings();
+  // No retrieval here — this is synthesis from the completed transcript,
+  // not a live question that benefits from market-calibration context.
+  const system = buildSystemBlock(null);
+  const outputConfigBase = {
+    effort: settings.artifact_effort as AgentEffort,
+  };
 
-  const response = await anthropic.messages.parse({
-    model: settings.artifact_model,
-    max_tokens: 16000,
-    output_config: {
-      effort: settings.artifact_effort as AgentEffort,
-      format: zodOutputFormat(BlueprintArtifactSchema),
-    },
-    // No retrieval here — this is synthesis from the completed transcript,
-    // not a live question that benefits from market-calibration context.
-    system: buildSystemBlock(null),
-    messages,
-  });
+  const [partA, partB] = await Promise.all([
+    anthropic.messages.parse({
+      model: settings.artifact_model,
+      max_tokens: 8000,
+      output_config: {
+        ...outputConfigBase,
+        format: zodOutputFormat(BlueprintArtifactPartASchema),
+      },
+      system,
+      messages: [
+        ...history,
+        { role: "user" as const, content: GENERATE_ARTIFACT_MESSAGE },
+      ],
+    }),
+    anthropic.messages.parse({
+      model: settings.artifact_model,
+      max_tokens: 8000,
+      output_config: {
+        ...outputConfigBase,
+        format: zodOutputFormat(BlueprintArtifactPartBSchema),
+      },
+      system,
+      messages: [
+        ...history,
+        { role: "user" as const, content: GENERATE_ARTIFACT_PART_B_MESSAGE },
+      ],
+    }),
+  ]);
 
-  if (!response.parsed_output) {
+  if (!partA.parsed_output || !partB.parsed_output) {
     throw new Error("Blueprint agent returned no parsed output for the artifact.");
   }
 
-  return response.parsed_output;
+  return { ...partA.parsed_output, ...partB.parsed_output };
 }
