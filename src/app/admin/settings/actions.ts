@@ -11,6 +11,7 @@ export interface SiteSettingsInput {
   hero_description: string;
   agent_model: string;
   agent_effort: string;
+  artifact_model: string;
   artifact_effort: string;
   agent_thinking_enabled: boolean;
 }
@@ -33,6 +34,7 @@ export async function updateSiteSettings(input: SiteSettingsInput) {
     hero_description: input.hero_description.trim(),
     agent_model: input.agent_model,
     agent_effort: input.agent_effort,
+    artifact_model: input.artifact_model,
     artifact_effort: input.artifact_effort,
     agent_thinking_enabled: input.agent_thinking_enabled,
   };
@@ -45,6 +47,9 @@ export async function updateSiteSettings(input: SiteSettingsInput) {
   }
   if (!AGENT_MODEL_OPTIONS.includes(trimmed.agent_model as never)) {
     throw new Error("Unrecognized agent model.");
+  }
+  if (!AGENT_MODEL_OPTIONS.includes(trimmed.artifact_model as never)) {
+    throw new Error("Unrecognized artifact model.");
   }
   if (!AGENT_EFFORT_OPTIONS.includes(trimmed.agent_effort as never)) {
     throw new Error("Unrecognized agent effort level.");

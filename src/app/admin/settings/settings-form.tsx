@@ -37,6 +37,7 @@ export function SettingsForm({ initial }: { initial: SiteSettingsInput }) {
   );
   const [agentModel, setAgentModel] = useState(initial.agent_model);
   const [agentEffort, setAgentEffort] = useState(initial.agent_effort);
+  const [artifactModel, setArtifactModel] = useState(initial.artifact_model);
   const [artifactEffort, setArtifactEffort] = useState(
     initial.artifact_effort
   );
@@ -55,6 +56,7 @@ export function SettingsForm({ initial }: { initial: SiteSettingsInput }) {
           hero_description: heroDescription,
           agent_model: agentModel,
           agent_effort: agentEffort,
+          artifact_model: artifactModel,
           artifact_effort: artifactEffort,
           agent_thinking_enabled: thinkingEnabled,
         });
@@ -133,27 +135,52 @@ export function SettingsForm({ initial }: { initial: SiteSettingsInput }) {
           </p>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label>Model</Label>
-          <Select value={agentModel} onValueChange={(v) => v && setAgentModel(v)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {AGENT_MODEL_OPTIONS.map((model) => (
-                <SelectItem key={model} value={model}>
-                  {model}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-slate-500">
-            Used for both the conversational turns and the final blueprint
-            synthesis. Sonnet is the fast/cost-effective default; Opus is
-            noticeably slower and is best reserved for cases where its
-            extra depth is worth the wait.
-          </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label>Conversation model</Label>
+            <Select value={agentModel} onValueChange={(v) => v && setAgentModel(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AGENT_MODEL_OPTIONS.map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Blueprint synthesis model</Label>
+            <Select
+              value={artifactModel}
+              onValueChange={(v) => v && setArtifactModel(v)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AGENT_MODEL_OPTIONS.map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+        <p className="-mt-2 text-xs text-slate-500">
+          Separate on purpose: the conversation model runs on every
+          founder-facing question, so Sonnet&rsquo;s speed matters there.
+          The synthesis model runs once, at the very end, against a much
+          larger structured-output schema — <strong>Sonnet 5 has been
+          observed rejecting that schema outright</strong> (&ldquo;the
+          compiled grammar is too large&rdquo;), so this defaults to Opus.
+          Only switch it to a lighter model after confirming that model
+          can actually complete a real blueprint.
+        </p>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">

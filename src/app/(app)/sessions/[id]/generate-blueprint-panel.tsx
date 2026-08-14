@@ -55,19 +55,20 @@ export function GenerateBlueprintPanel({ sessionId }: { sessionId: string }) {
   function run() {
     setFailed(false);
     startTransition(async () => {
-      try {
-        await generateBlueprintForSession(sessionId);
+      // generateBlueprintForSession returns a result object rather than
+      // throwing — Next.js masks thrown Server Action error messages in
+      // production (shown to a founder once as a raw "Minified React
+      // error #441" digest with no useful text), so the real message has
+      // to travel back as data, not as an exception.
+      const result = await generateBlueprintForSession(sessionId);
+      if (result.ok) {
         // Re-fetches the session server-side — status is now "complete",
         // so the page swaps this panel for the "Your blueprint is ready"
         // banner on its own.
         router.refresh();
-      } catch (err) {
+      } else {
         setFailed(true);
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : "Something went wrong generating your blueprint."
-        );
+        toast.error(result.message);
       }
     });
   }

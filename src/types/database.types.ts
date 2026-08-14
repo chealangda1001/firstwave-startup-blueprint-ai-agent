@@ -377,6 +377,7 @@ export type Database = {
           agent_thinking_enabled: boolean
           app_name: string
           artifact_effort: string
+          artifact_model: string
           hero_description: string
           hero_subtitle: string
           hero_title: string
@@ -389,6 +390,7 @@ export type Database = {
           agent_thinking_enabled?: boolean
           app_name?: string
           artifact_effort?: string
+          artifact_model?: string
           hero_description?: string
           hero_subtitle?: string
           hero_title?: string
@@ -401,6 +403,7 @@ export type Database = {
           agent_thinking_enabled?: boolean
           app_name?: string
           artifact_effort?: string
+          artifact_model?: string
           hero_description?: string
           hero_subtitle?: string
           hero_title?: string

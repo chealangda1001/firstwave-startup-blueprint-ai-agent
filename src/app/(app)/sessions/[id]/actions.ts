@@ -207,13 +207,27 @@ export async function retryLastTurn(sessionId: string) {
  * (saveBlueprintArtifact upserts on session_id), so a duplicate call from a
  * second tab or a client remount just overwrites the same row rather than
  * corrupting anything.
+ *
+ * Returns a plain result object rather than throwing on failure. Next.js
+ * masks thrown Error messages from Server Actions in production by
+ * default (replaced client-side with a generic "Minified React error
+ * #441" digest, with no way to recover the real text) — a real bug we hit
+ * live: the founder saw that raw digest instead of a usable message.
+ * Returning the message as data sidesteps that entirely, since it's never
+ * an uncaught exception crossing the server/client boundary.
  */
-export async function generateBlueprintForSession(sessionId: string) {
+export type GenerateBlueprintResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+export async function generateBlueprintForSession(
+  sessionId: string
+): Promise<GenerateBlueprintResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not signed in.");
+  if (!user) return { ok: false, message: "Not signed in." };
 
   const { data: session } = await supabase
     .from("sessions")
@@ -221,14 +235,14 @@ export async function generateBlueprintForSession(sessionId: string) {
     .eq("id", sessionId)
     .single();
 
-  if (!session) throw new Error("Session not found.");
+  if (!session) return { ok: false, message: "Session not found." };
   if (session.founder_id !== user.id) {
-    throw new Error("You don't have access to this session.");
+    return { ok: false, message: "You don't have access to this session." };
   }
   // Already done, or not actually waiting on this step (e.g. a stale
   // client retriggering after a previous failure already reset status) —
   // either way, nothing to do here.
-  if (session.status !== "generating") return;
+  if (session.status !== "generating") return { ok: true };
 
   const { data: priorMessages } = await supabase
     .from("session_messages")
@@ -261,9 +275,11 @@ export async function generateBlueprintForSession(sessionId: string) {
       .from("sessions")
       .update({ status: "in_progress" })
       .eq("id", sessionId);
-    throw new Error(
-      "Something went wrong generating your final blueprint. Please try again."
-    );
+    return {
+      ok: false,
+      message:
+        "Something went wrong generating your final blueprint. Please try again.",
+    };
   }
 
   await supabase
@@ -272,4 +288,5 @@ export async function generateBlueprintForSession(sessionId: string) {
     .eq("id", sessionId);
 
   revalidatePath(`/sessions/${sessionId}`);
+  return { ok: true };
 }

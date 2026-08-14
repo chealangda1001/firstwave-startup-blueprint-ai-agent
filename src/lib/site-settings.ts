@@ -8,14 +8,17 @@ export interface SiteSettings {
   hero_description: string;
   agent_model: string;
   agent_effort: string;
+  artifact_model: string;
   artifact_effort: string;
   agent_thinking_enabled: boolean;
 }
 
-// Matches the column defaults in migrations 0006 and 0018 — used only if
-// the singleton row is somehow missing (fresh DB before the seed insert
-// ran, or the read fails), so the app never renders blank hero copy or
-// calls the LLM with an undefined model.
+// Matches the column defaults in migrations 0006, 0018, and 0021 — used
+// only if the singleton row is somehow missing (fresh DB before the seed
+// insert ran, or the read fails), so the app never renders blank hero copy
+// or calls the LLM with an undefined model. artifact_model defaults to
+// Opus, not Sonnet — see migration 0021: the blueprint-synthesis schema is
+// too large for Sonnet 5's structured-output grammar compiler.
 const FALLBACK: SiteSettings = {
   app_name: "Blueprint Agent",
   hero_title: "Turn a raw idea into a structured product blueprint",
@@ -25,6 +28,7 @@ const FALLBACK: SiteSettings = {
     "Get a 9-section blueprint — problem, users, business model, and more — ready to share with engineering, marketing, and finance.",
   agent_model: "claude-sonnet-5",
   agent_effort: "medium",
+  artifact_model: "claude-opus-5",
   artifact_effort: "high",
   agent_thinking_enabled: false,
 };
@@ -42,7 +46,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   const { data } = await supabase
     .from("site_settings")
     .select(
-      "app_name, hero_title, hero_subtitle, hero_description, agent_model, agent_effort, artifact_effort, agent_thinking_enabled"
+      "app_name, hero_title, hero_subtitle, hero_description, agent_model, agent_effort, artifact_model, artifact_effort, agent_thinking_enabled"
     )
     .eq("id", 1)
     .single();

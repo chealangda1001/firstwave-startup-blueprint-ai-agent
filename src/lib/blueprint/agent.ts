@@ -161,9 +161,14 @@ export async function runAgentTurn(
 /**
  * Synthesizes the full 9-section blueprint artifact from the completed
  * transcript. Called once, when a turn's session_status flips to "complete".
- * Uses the same admin-configurable model as runAgentTurn, but its own
- * (typically higher) effort setting — this one-time synthesis isn't
- * latency-sensitive the same way a live conversational turn is.
+ * Uses its own admin-configurable model (settings.artifact_model), not
+ * runAgentTurn's — deliberately decoupled (migration 0021): a Sonnet 5
+ * conversational-turn latency win previously broke this call outright in
+ * production ("the compiled grammar is too large" from Anthropic — the
+ * full BlueprintArtifactSchema is too complex for Sonnet 5's
+ * structured-output grammar compiler, a limit Opus tolerates). Synthesis
+ * only runs once per session and isn't latency-sensitive the way a live
+ * turn is, so it can afford a heavier default model.
  */
 export async function generateBlueprintArtifact(
   history: HistoryMessage[]
@@ -176,7 +181,7 @@ export async function generateBlueprintArtifact(
   const settings = await getSiteSettings();
 
   const response = await anthropic.messages.parse({
-    model: settings.agent_model,
+    model: settings.artifact_model,
     max_tokens: 16000,
     output_config: {
       effort: settings.artifact_effort as AgentEffort,
