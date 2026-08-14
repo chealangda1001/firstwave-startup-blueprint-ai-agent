@@ -179,7 +179,7 @@ export function ReplyComposer({
           {isPending ? (
             <>
               <Spinner />
-              Sending…
+              Working on it…
             </>
           ) : (
             "Send"
