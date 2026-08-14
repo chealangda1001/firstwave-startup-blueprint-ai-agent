@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { stageLabel, statusLabel } from "@/lib/blueprint/labels";
 
 const STATUS_VARIANT: Record<string, string> = {
   complete: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100",
@@ -80,8 +81,8 @@ export default async function AdminSessionsPage() {
                       ? "BMC"
                       : "—"}
                 </TableCell>
-                <TableCell className="font-mono text-xs text-slate-500">
-                  {session.current_stage}
+                <TableCell className="text-xs text-slate-500">
+                  {stageLabel(session.current_stage)}
                 </TableCell>
                 <TableCell>
                   <Badge
@@ -89,7 +90,7 @@ export default async function AdminSessionsPage() {
                       STATUS_VARIANT[session.status] ?? STATUS_VARIANT.abandoned
                     }`}
                   >
-                    {session.status}
+                    {statusLabel(session.status)}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-sm text-slate-500">

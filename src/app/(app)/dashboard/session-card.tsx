@@ -3,12 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { renameSession, deleteSession } from "./actions";
-
-const STATUS_LABEL: Record<string, string> = {
-  in_progress: "In progress",
-  complete: "Complete",
-  abandoned: "Abandoned",
-};
+import { stageLabel, statusLabel } from "@/lib/blueprint/labels";
 
 export interface SessionCardData {
   id: string;
@@ -106,7 +101,7 @@ export function SessionCard({ session }: { session: SessionCardData }) {
                   ? "Lean Canvas"
                   : "Business Model Canvas"
                 : "Canvas not yet chosen"}{" "}
-              · {session.current_stage}
+              · {stageLabel(session.current_stage)}
             </p>
           </Link>
         )}
@@ -115,7 +110,7 @@ export function SessionCard({ session }: { session: SessionCardData }) {
 
       <div className="flex shrink-0 items-center gap-3">
         <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-          {STATUS_LABEL[session.status] ?? session.status}
+          {statusLabel(session.status)}
         </span>
 
         {!isRenaming && (

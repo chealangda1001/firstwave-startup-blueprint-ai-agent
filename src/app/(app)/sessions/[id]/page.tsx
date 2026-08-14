@@ -7,6 +7,7 @@ import { MessageContent } from "./message-content";
 import { AssistantMessage } from "./assistant-message";
 import { ChatTranscript, type NavItem } from "./chat-transcript";
 import { splitMarkdownBlocks } from "@/lib/blueprint/split-blocks";
+import { stageLabel, statusLabel } from "@/lib/blueprint/labels";
 
 const ROLE_STYLE: Record<string, string> = {
   assistant:
@@ -80,7 +81,7 @@ export default async function SessionPage({
           {session.title || session.domain || "Untitled blueprint"}
         </h1>
         <p className="text-xs text-zinc-500 dark:text-zinc-500">
-          Stage: {session.current_stage} · Status: {session.status}
+          {stageLabel(session.current_stage)} · {statusLabel(session.status)}
         </p>
       </div>
 
