@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MagicRingsBackground } from "./magic-rings-background";
+import { HeroChatbox } from "./hero-chatbox";
 import { getSiteSettings } from "@/lib/site-settings";
 
 export async function LandingPage() {
@@ -34,12 +35,9 @@ export async function LandingPage() {
             {hero_description}
           </p>
         </div>
-        <Link
-          href="/login"
-          className="mt-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-zinc-950 transition-colors hover:bg-zinc-200"
-        >
-          Get Started for Free
-        </Link>
+        <div className="mt-2 w-full max-w-lg">
+          <HeroChatbox appName={app_name} />
+        </div>
       </div>
     </section>
   );
