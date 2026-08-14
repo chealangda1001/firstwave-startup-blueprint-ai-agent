@@ -39,6 +39,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      blueprint_pdfs: {
+        Row: {
+          blueprint_id: string
+          created_at: string
+          id: string
+          storage_path: string
+        }
+        Insert: {
+          blueprint_id: string
+          created_at?: string
+          id?: string
+          storage_path: string
+        }
+        Update: {
+          blueprint_id?: string
+          created_at?: string
+          id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blueprint_pdfs_blueprint_id_fkey"
+            columns: ["blueprint_id"]
+            isOneToOne: false
+            referencedRelation: "blueprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blueprints: {
         Row: {
           canvas_type: Database["public"]["Enums"]["canvas_type"]

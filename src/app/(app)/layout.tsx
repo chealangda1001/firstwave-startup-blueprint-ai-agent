@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/login/actions";
 import { getSiteSettings } from "@/lib/site-settings";
+import { Toaster } from "@/components/ui/sonner";
 
 export default async function AppLayout({
   children,
@@ -42,6 +43,7 @@ export default async function AppLayout({
         </div>
       </header>
       <main className="flex flex-1 flex-col">{children}</main>
+      <Toaster />
     </div>
   );
 }

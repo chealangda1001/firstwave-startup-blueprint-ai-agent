@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { DownloadPdfButton } from "./download-pdf-button";
 
 function Section({
   title,
@@ -130,19 +131,22 @@ export default async function BlueprintPage({
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
-      <div>
-        <Link
-          href={`/sessions/${id}`}
-          className="text-xs text-zinc-500 underline underline-offset-2 dark:text-zinc-500"
-        >
-          ← Back to the conversation
-        </Link>
-        <h1 className="mt-2 text-xl font-semibold text-zinc-950 dark:text-zinc-50">
-          {session.title || session.domain || "Product Blueprint"}
-        </h1>
-        <p className="text-xs text-zinc-500 dark:text-zinc-500">
-          Canvas: {blueprint.canvas_type === "lean" ? "Lean Canvas" : "Business Model Canvas"}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <Link
+            href={`/sessions/${id}`}
+            className="text-xs text-zinc-500 underline underline-offset-2 dark:text-zinc-500"
+          >
+            ← Back to the conversation
+          </Link>
+          <h1 className="mt-2 text-xl font-semibold text-zinc-950 dark:text-zinc-50">
+            {session.title || session.domain || "Product Blueprint"}
+          </h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-500">
+            Canvas: {blueprint.canvas_type === "lean" ? "Lean Canvas" : "Business Model Canvas"}
+          </p>
+        </div>
+        <DownloadPdfButton sessionId={id} />
       </div>
 
       <Section title="1. Problem">

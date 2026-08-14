@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DownloadPdfButton } from "@/app/(app)/sessions/[id]/blueprint/download-pdf-button";
 
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
@@ -107,24 +108,30 @@ export default async function AdminBlueprintPage({
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <div>
-        <Link
-          href="/admin/sessions"
-          className="text-xs text-slate-500 hover:underline"
-        >
-          ← Back to sessions
-        </Link>
-        <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-slate-900">
-            {session.title || session.domain || "Untitled blueprint"}
-          </h1>
-          <Badge className="rounded-sm bg-slate-200 text-slate-700 hover:bg-slate-200">
-            {blueprint.canvas_type === "lean" ? "Lean Canvas" : "BMC"}
-          </Badge>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <Link
+            href="/admin/sessions"
+            className="text-xs text-slate-500 hover:underline"
+          >
+            ← Back to sessions
+          </Link>
+          <div className="mt-2 flex items-center gap-3">
+            <h1 className="text-xl font-semibold text-slate-900">
+              {session.title || session.domain || "Untitled blueprint"}
+            </h1>
+            <Badge className="rounded-sm bg-slate-200 text-slate-700 hover:bg-slate-200">
+              {blueprint.canvas_type === "lean" ? "Lean Canvas" : "BMC"}
+            </Badge>
+          </div>
+          <p className="text-xs text-slate-500">
+            {session.profiles?.full_name || session.profiles?.email}
+          </p>
         </div>
-        <p className="text-xs text-slate-500">
-          {session.profiles?.full_name || session.profiles?.email}
-        </p>
+        <DownloadPdfButton
+          sessionId={id}
+          className="shrink-0 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+        />
       </div>
 
       <Card>

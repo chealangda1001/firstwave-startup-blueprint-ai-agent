@@ -47,6 +47,7 @@ Solo founders and product owners launching new product initiatives — specifica
 - Pinecone (if pgvector outgrown)
 - Separate Node/Python backend (if API routes outgrown)
 - n8n or custom workflow orchestration layer
+- Evaluate Claude Managed Agents as the pipeline execution layer — replaces custom orchestrator with managed multi-agent sessions. Assess at V2 start, not before.
 
 ---
 
