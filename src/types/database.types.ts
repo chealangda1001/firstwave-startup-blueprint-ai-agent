@@ -1,7 +1,3 @@
-// NOTE: this file is generated from the live schema. Regenerate with:
-//   npx supabase gen types typescript --linked > src/types/database.types.ts
-// Do not hand-edit the generated sections below the Database type.
-
 export type Json =
   | string
   | number
@@ -255,6 +251,7 @@ export type Database = {
           id: string
           quick_replies: Json | null
           quick_replies_multi_select: boolean
+          response_time_ms: number | null
           role: Database["public"]["Enums"]["message_role"]
           session_id: string
           stage: string | null
@@ -265,6 +262,7 @@ export type Database = {
           id?: string
           quick_replies?: Json | null
           quick_replies_multi_select?: boolean
+          response_time_ms?: number | null
           role: Database["public"]["Enums"]["message_role"]
           session_id: string
           stage?: string | null
@@ -275,6 +273,7 @@ export type Database = {
           id?: string
           quick_replies?: Json | null
           quick_replies_multi_select?: boolean
+          response_time_ms?: number | null
           role?: Database["public"]["Enums"]["message_role"]
           session_id?: string
           stage?: string | null
@@ -495,8 +494,6 @@ export const Constants = {
   },
 } as const
 
-// Convenience aliases used across the app instead of the verbose
-// Database["public"]["Enums"][...] access path.
 export type CanvasType = Database["public"]["Enums"]["canvas_type"]
 export type SessionStatus = Database["public"]["Enums"]["session_status"]
 export type ConfidenceLevel = Database["public"]["Enums"]["confidence_level"]

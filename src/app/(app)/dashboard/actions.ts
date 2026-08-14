@@ -30,7 +30,9 @@ export async function createSession() {
   }
 
   try {
+    const startedAt = Date.now();
     const opening = await runAgentTurn([]);
+    const responseTimeMs = Date.now() - startedAt;
 
     const { error: messagesError } = await supabase
       .from("session_messages")
@@ -50,6 +52,7 @@ export async function createSession() {
           content: opening.reply_markdown,
           quick_replies: opening.quick_replies,
           quick_replies_multi_select: opening.quick_replies_multi_select ?? false,
+          response_time_ms: responseTimeMs,
         },
       ]);
 

@@ -49,8 +49,11 @@ export async function sendMessage(sessionId: string, formData: FormData) {
   }));
 
   let turn;
+  const startedAt = Date.now();
+  let responseTimeMs: number;
   try {
     turn = await runAgentTurn(history);
+    responseTimeMs = Date.now() - startedAt;
   } catch (err) {
     console.error("runAgentTurn failed", err);
     await supabase.from("session_messages").insert({
@@ -82,6 +85,7 @@ export async function sendMessage(sessionId: string, formData: FormData) {
         content: turn.reply_markdown,
         quick_replies: turn.quick_replies,
         quick_replies_multi_select: turn.quick_replies_multi_select ?? false,
+        response_time_ms: responseTimeMs,
       },
     ]);
 

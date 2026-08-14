@@ -41,7 +41,7 @@ export default async function SessionPage({
   const { data: allMessages } = await supabase
     .from("session_messages")
     .select(
-      "id, role, content, stage, created_at, quick_replies, quick_replies_multi_select"
+      "id, role, content, stage, created_at, quick_replies, quick_replies_multi_select, response_time_ms"
     )
     .eq("session_id", id)
     .order("created_at", { ascending: true });
@@ -114,6 +114,7 @@ export default async function SessionPage({
                   blocks={splitMarkdownBlocks(message.content)}
                   animate={message.id === lastMessage?.id}
                   bubbleClassName={bubbleClassName}
+                  responseTimeMs={message.response_time_ms}
                 />
               ) : (
                 <div

@@ -12,14 +12,23 @@ const REVEAL_GAP_MS = 700;
  * with a short gap — reads like a person typing several messages instead
  * of a bot dumping a paragraph.
  */
+function formatResponseTime(ms: number): string {
+  const seconds = ms / 1000;
+  return seconds < 10
+    ? `${seconds.toFixed(1)}s`
+    : `${Math.round(seconds)}s`;
+}
+
 export function AssistantMessage({
   blocks,
   animate,
   bubbleClassName,
+  responseTimeMs,
 }: {
   blocks: string[];
   animate: boolean;
   bubbleClassName: string;
+  responseTimeMs?: number | null;
 }) {
   const [visibleCount, setVisibleCount] = useState(animate ? 1 : blocks.length);
 
@@ -42,6 +51,11 @@ export function AssistantMessage({
           <MessageContent content={block} />
         </div>
       ))}
+      {responseTimeMs != null && visibleCount >= blocks.length && (
+        <p className="px-1 text-xs text-zinc-400 dark:text-zinc-600">
+          Responded in {formatResponseTime(responseTimeMs)}
+        </p>
+      )}
     </>
   );
 }

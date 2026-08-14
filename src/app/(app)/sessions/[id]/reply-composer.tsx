@@ -7,29 +7,33 @@ export interface QuickReply {
   value: string;
 }
 
-const WORKING_PHRASES = [
-  "Reading your answer…",
-  "Checking it against the quality gate…",
-  "Weighing what to ask next…",
-  "Almost there…",
-];
+// A normal turn is one model call and usually lands well under this. Past
+// it, we're most likely in the slower path: the interview just wrapped and
+// the agent is drafting the full blueprint (a second, heavier call) — so the
+// phrase below is a real, timing-based signal, not a scripted animation.
+const LONG_WAIT_MS = 12_000;
 
 /**
- * Cycles through WORKING_PHRASES every ~1.6s while `active` is true, to make
- * the ~10-20s agent round trip feel shorter than a static spinner would.
+ * Two honest phases, not a fabricated sequence: there's exactly one thing
+ * happening server-side (a single model call) until it isn't — a wait that
+ * runs past LONG_WAIT_MS is the tell that the heavier blueprint-drafting
+ * call kicked in, so the copy switches to reflect that likelihood.
  */
 function useWorkingPhrase(active: boolean) {
-  const [index, setIndex] = useState(0);
+  const [longWait, setLongWait] = useState(false);
 
   useEffect(() => {
     if (!active) return;
-    const interval = setInterval(() => {
-      setIndex((i) => (i + 1) % WORKING_PHRASES.length);
-    }, 1600);
-    return () => clearInterval(interval);
+    const timer = setTimeout(() => setLongWait(true), LONG_WAIT_MS);
+    return () => {
+      clearTimeout(timer);
+      setLongWait(false);
+    };
   }, [active]);
 
-  return WORKING_PHRASES[index];
+  return longWait
+    ? "Putting your blueprint together — this one takes a bit longer…"
+    : "The agent is thinking about your answer…";
 }
 
 function Spinner() {
