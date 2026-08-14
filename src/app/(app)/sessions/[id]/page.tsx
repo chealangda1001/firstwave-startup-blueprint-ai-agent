@@ -12,6 +12,15 @@ import { PendingMessageProvider } from "./pending-message-context";
 import { PendingUserBubble } from "./pending-user-bubble";
 import { GenerateBlueprintPanel } from "./generate-blueprint-panel";
 
+// Route segment config, not a plain export — this is what actually raises
+// the Vercel function timeout for Server Actions invoked from this page
+// (a "use server" file itself can only export async functions, so this
+// can't live in actions.ts). Default is 10s on Hobby;
+// generateBlueprintForSession's two parallel synthesis calls alone can
+// take ~20-30s on a large transcript, so 60s is real headroom, not just
+// insurance.
+export const maxDuration = 60;
+
 const ROLE_STYLE: Record<string, string> = {
   assistant:
     "self-start bg-white border border-black/[.08] text-zinc-900 dark:bg-zinc-950 dark:border-white/[.1] dark:text-zinc-100",

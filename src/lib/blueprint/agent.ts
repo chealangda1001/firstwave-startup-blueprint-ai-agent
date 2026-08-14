@@ -195,7 +195,7 @@ export async function generateBlueprintArtifact(
   const [partA, partB] = await Promise.all([
     anthropic.messages.parse({
       model: settings.artifact_model,
-      max_tokens: 8000,
+      max_tokens: 16000,
       output_config: {
         ...outputConfigBase,
         format: zodOutputFormat(BlueprintArtifactPartASchema),
@@ -208,7 +208,7 @@ export async function generateBlueprintArtifact(
     }),
     anthropic.messages.parse({
       model: settings.artifact_model,
-      max_tokens: 8000,
+      max_tokens: 16000,
       output_config: {
         ...outputConfigBase,
         format: zodOutputFormat(BlueprintArtifactPartBSchema),
