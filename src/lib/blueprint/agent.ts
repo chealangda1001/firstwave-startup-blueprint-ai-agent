@@ -8,6 +8,7 @@ import {
   type BlueprintArtifactOutput,
   type TurnEnvelope,
 } from "./schemas";
+import { retrieveKnowledgeBase, formatRetrievedContext } from "./retrieve-knowledge-base";
 
 export interface HistoryMessage {
   role: "user" | "assistant";
@@ -20,14 +21,53 @@ const KICKOFF_MESSAGE =
 const GENERATE_ARTIFACT_MESSAGE =
   "[GENERATE BLUEPRINT] The interview is complete — Sections 1 through 9 have all been covered above. Produce the final blueprint artifact now, following the OUTPUT CONTRACT structure exactly, grounded in everything discussed in this conversation. Flag any gaps honestly per Rule 8 rather than inventing answers.";
 
-function buildSystemBlock() {
-  return [
+// How many of the founder's most recent answers to embed as the retrieval
+// query. Recent-only (not the whole transcript) so the query tracks
+// wherever the conversation has drifted to, not just where it started.
+const RETRIEVAL_HISTORY_WINDOW = 3;
+
+function buildSystemBlock(retrievedContextText: string | null) {
+  const blocks: Array<{
+    type: "text";
+    text: string;
+    cache_control?: { type: "ephemeral" };
+  }> = [
     {
-      type: "text" as const,
+      type: "text",
       text: BLUEPRINT_SYSTEM_PROMPT,
-      cache_control: { type: "ephemeral" as const },
+      cache_control: { type: "ephemeral" },
     },
   ];
+
+  // Deliberately its own block, with no cache_control — this changes every
+  // turn as the conversation moves, unlike the main prompt above.
+  if (retrievedContextText) {
+    blocks.push({ type: "text", text: retrievedContextText });
+  }
+
+  return blocks;
+}
+
+/**
+ * Builds the retrieval query from the founder's own recent words — never
+ * the assistant's, which would mostly just match generic interview
+ * phrasing back against itself instead of the founder's actual situation.
+ * Returns null for a brand-new session, where there's no founder content
+ * yet to retrieve against.
+ */
+async function retrieveContextForHistory(
+  history: HistoryMessage[]
+): Promise<string | null> {
+  const recentFounderText = history
+    .filter((m) => m.role === "user")
+    .slice(-RETRIEVAL_HISTORY_WINDOW)
+    .map((m) => m.content)
+    .join("\n\n");
+
+  if (!recentFounderText.trim()) return null;
+
+  const cards = await retrieveKnowledgeBase(recentFounderText);
+  return formatRetrievedContext(cards);
 }
 
 /**
@@ -48,6 +88,8 @@ export async function runAgentTurn(
       ? history
       : [{ role: "user" as const, content: KICKOFF_MESSAGE }];
 
+  const retrievedContextText = await retrieveContextForHistory(history);
+
   const response = await anthropic.messages.parse({
     model: BLUEPRINT_MODEL,
     max_tokens: 4096,
@@ -56,7 +98,7 @@ export async function runAgentTurn(
       effort: "medium",
       format: zodOutputFormat(TurnEnvelopeSchema),
     },
-    system: buildSystemBlock(),
+    system: buildSystemBlock(retrievedContextText),
     messages,
   });
 
@@ -86,7 +128,9 @@ export async function generateBlueprintArtifact(
       effort: "high",
       format: zodOutputFormat(BlueprintArtifactSchema),
     },
-    system: buildSystemBlock(),
+    // No retrieval here — this is synthesis from the completed transcript,
+    // not a live question that benefits from market-calibration context.
+    system: buildSystemBlock(null),
     messages,
   });
 

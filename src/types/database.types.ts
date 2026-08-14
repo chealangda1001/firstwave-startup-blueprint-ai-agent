@@ -172,6 +172,7 @@ export type Database = {
           content: string
           created_at: string
           domain: string
+          embedding: string | null
           id: string
           is_active: boolean
           source: string | null
@@ -184,6 +185,7 @@ export type Database = {
           content: string
           created_at?: string
           domain: string
+          embedding?: string | null
           id?: string
           is_active?: boolean
           source?: string | null
@@ -196,6 +198,7 @@ export type Database = {
           content?: string
           created_at?: string
           domain?: string
+          embedding?: string | null
           id?: string
           is_active?: boolean
           source?: string | null
@@ -397,6 +400,21 @@ export type Database = {
     }
     Functions: {
       is_admin: { Args: never; Returns: boolean }
+      match_knowledge_base: {
+        Args: {
+          match_count?: number
+          min_similarity?: number
+          query_embedding: string
+        }
+        Returns: {
+          card_type: Database["public"]["Enums"]["knowledge_base_card_type"]
+          content: string
+          domain: string
+          id: string
+          similarity: number
+          title: string
+        }[]
+      }
     }
     Enums: {
       canvas_type: "lean" | "bmc"
