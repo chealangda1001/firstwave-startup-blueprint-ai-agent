@@ -21,6 +21,19 @@ interface HistoryMessage {
  * still runs, and the page derives "still unanswered" from the message
  * shape itself (last visible message is role=user), not from this row, so
  * a retry stays available either way.
+ *
+ * Deliberately does NOT run the blueprint synthesis itself, even when this
+ * turn is the closing one (session_status "complete") — that's a second,
+ * much slower model call, and folding it into this same round-trip left
+ * the founder staring at a generic spinner with no honest signal for what
+ * was actually taking so long, then seeing the closing reply ("give me a
+ * moment...") arrive already-stale, well after the moment had passed. This
+ * function instead lands the conversational turn as its own fast,
+ * self-contained update — flipping status to "generating" rather than
+ * straight to "complete" — and the founder-visible synthesis step happens
+ * in its own separate call (see generateBlueprintForSession below),
+ * triggered by GenerateBlueprintPanel the instant "generating" reaches the
+ * page.
  */
 async function runTurnAndPersist(
   supabase: SupabaseClient<Database>,
@@ -72,28 +85,12 @@ async function runTurnAndPersist(
     throw new Error(insertReplyError.message);
   }
 
-  // Only flip the session to "complete" once the artifact is safely saved —
-  // otherwise a founder who reached the end can never retry generation.
-  let finalStatus: "in_progress" | "complete" = turn.session_status;
-
-  if (turn.session_status === "complete") {
-    const fullHistory = [...history, { role: "assistant" as const, content: turn.reply_markdown }];
-
-    try {
-      const artifact = await generateBlueprintArtifact(fullHistory);
-      await saveBlueprintArtifact(supabase, sessionId, artifact);
-    } catch (err) {
-      console.error("generateBlueprintArtifact failed", err);
-      finalStatus = "in_progress";
-      await supabase.from("session_messages").insert({
-        session_id: sessionId,
-        role: "log",
-        stage: turn.current_stage,
-        content:
-          "Something went wrong generating your final blueprint. Send any message to try again.",
-      });
-    }
-  }
+  // "complete" here means "the interview is done" per the model's own
+  // judgement — mapped to "generating" so the UI can show the synthesis
+  // step as its own honest, separately-triggered phase instead of a done
+  // deal that hasn't actually happened yet.
+  const finalStatus: "in_progress" | "generating" =
+    turn.session_status === "complete" ? "generating" : "in_progress";
 
   await supabase
     .from("sessions")
@@ -124,7 +121,9 @@ export async function sendMessage(sessionId: string, formData: FormData) {
     .eq("id", sessionId)
     .single();
 
-  if (!session || session.status === "complete") return;
+  if (!session || session.status === "complete" || session.status === "generating") {
+    return;
+  }
 
   const { error: insertUserError } = await supabase
     .from("session_messages")
@@ -174,7 +173,9 @@ export async function retryLastTurn(sessionId: string) {
     .eq("id", sessionId)
     .single();
 
-  if (!session || session.status === "complete") return;
+  if (!session || session.status === "complete" || session.status === "generating") {
+    return;
+  }
 
   const { data: priorMessages } = await supabase
     .from("session_messages")
@@ -194,5 +195,81 @@ export async function retryLastTurn(sessionId: string) {
   }
 
   await runTurnAndPersist(supabase, sessionId, session.current_stage, history);
+  revalidatePath(`/sessions/${sessionId}`);
+}
+
+/**
+ * The blueprint synthesis step, on its own — called by GenerateBlueprintPanel
+ * the moment a session lands on status "generating" (see page.tsx), so the
+ * founder gets a dedicated, honestly-worded "generating your blueprint"
+ * state for exactly as long as this actually takes, instead of it being
+ * silently bundled into the closing conversational turn. Idempotent
+ * (saveBlueprintArtifact upserts on session_id), so a duplicate call from a
+ * second tab or a client remount just overwrites the same row rather than
+ * corrupting anything.
+ */
+export async function generateBlueprintForSession(sessionId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+
+  const { data: session } = await supabase
+    .from("sessions")
+    .select("id, founder_id, status, current_stage")
+    .eq("id", sessionId)
+    .single();
+
+  if (!session) throw new Error("Session not found.");
+  if (session.founder_id !== user.id) {
+    throw new Error("You don't have access to this session.");
+  }
+  // Already done, or not actually waiting on this step (e.g. a stale
+  // client retriggering after a previous failure already reset status) —
+  // either way, nothing to do here.
+  if (session.status !== "generating") return;
+
+  const { data: priorMessages } = await supabase
+    .from("session_messages")
+    .select("role, content")
+    .eq("session_id", sessionId)
+    .in("role", ["user", "assistant"])
+    .order("created_at", { ascending: true });
+
+  const history = (priorMessages ?? []).map((m) => ({
+    role: m.role as "user" | "assistant",
+    content: m.content,
+  }));
+
+  try {
+    const artifact = await generateBlueprintArtifact(history);
+    await saveBlueprintArtifact(supabase, sessionId, artifact);
+  } catch (err) {
+    console.error("generateBlueprintArtifact failed", err);
+    await supabase.from("session_messages").insert({
+      session_id: sessionId,
+      role: "log",
+      stage: session.current_stage,
+      content:
+        "Something went wrong generating your final blueprint. Send any message to try again.",
+    });
+    // Back to in_progress (not "generating") so the founder gets the
+    // composer and the normal needsRetry banner back, rather than being
+    // stuck on a permanent "generating" screen with no way forward.
+    await supabase
+      .from("sessions")
+      .update({ status: "in_progress" })
+      .eq("id", sessionId);
+    throw new Error(
+      "Something went wrong generating your final blueprint. Please try again."
+    );
+  }
+
+  await supabase
+    .from("sessions")
+    .update({ status: "complete" })
+    .eq("id", sessionId);
+
   revalidatePath(`/sessions/${sessionId}`);
 }

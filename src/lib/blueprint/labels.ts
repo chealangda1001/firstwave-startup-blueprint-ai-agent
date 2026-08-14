@@ -28,6 +28,7 @@ export function stageLabel(stage: string | null | undefined): string {
 
 const STATUS_LABEL: Record<string, string> = {
   in_progress: "In progress",
+  generating: "Generating blueprint",
   complete: "Complete",
   abandoned: "Abandoned",
 };

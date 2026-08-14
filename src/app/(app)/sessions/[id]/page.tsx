@@ -10,6 +10,7 @@ import { splitMarkdownBlocks } from "@/lib/blueprint/split-blocks";
 import { stageLabel, statusLabel } from "@/lib/blueprint/labels";
 import { PendingMessageProvider } from "./pending-message-context";
 import { PendingUserBubble } from "./pending-user-bubble";
+import { GenerateBlueprintPanel } from "./generate-blueprint-panel";
 
 const ROLE_STYLE: Record<string, string> = {
   assistant:
@@ -55,6 +56,7 @@ export default async function SessionPage({
     .order("created_at", { ascending: true });
 
   const isComplete = session.status === "complete";
+  const isGenerating = session.status === "generating";
   const boundSendMessage = sendMessage.bind(null, id);
   const boundRetryLastTurn = retryLastTurn.bind(null, id);
 
@@ -162,7 +164,9 @@ export default async function SessionPage({
           <PendingUserBubble />
         </ChatTranscript>
 
-        {!isComplete && (
+        {isGenerating && <GenerateBlueprintPanel sessionId={id} />}
+
+        {!isComplete && !isGenerating && (
           <ReplyComposer
             key={lastMessage?.id}
             sendMessage={boundSendMessage}

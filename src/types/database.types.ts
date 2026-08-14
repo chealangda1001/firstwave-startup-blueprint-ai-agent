@@ -439,7 +439,7 @@ export type Database = {
         | "market_context"
         | "lead_through_example"
       message_role: "user" | "assistant" | "log"
-      session_status: "in_progress" | "complete" | "abandoned"
+      session_status: "in_progress" | "complete" | "abandoned" | "generating"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -578,7 +578,7 @@ export const Constants = {
         "lead_through_example",
       ],
       message_role: ["user", "assistant", "log"],
-      session_status: ["in_progress", "complete", "abandoned"],
+      session_status: ["in_progress", "complete", "abandoned", "generating"],
     },
   },
 } as const
