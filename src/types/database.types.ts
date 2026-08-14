@@ -335,6 +335,33 @@ export type Database = {
           },
         ]
       }
+      site_settings: {
+        Row: {
+          app_name: string
+          hero_description: string
+          hero_subtitle: string
+          hero_title: string
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          app_name?: string
+          hero_description?: string
+          hero_subtitle?: string
+          hero_title?: string
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          app_name?: string
+          hero_description?: string
+          hero_subtitle?: string
+          hero_title?: string
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

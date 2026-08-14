@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
 import { signOut } from "@/app/login/actions";
+import { getSiteSettings } from "@/lib/site-settings";
 
 /**
  * Everything under /admin is gated on profiles.is_admin — checked here
@@ -41,10 +42,13 @@ export default async function AdminLayout({
     redirect("/dashboard");
   }
 
+  const { app_name } = await getSiteSettings();
+
   const navItems = [
     { href: "/admin", label: "Overview" },
     { href: "/admin/knowledge-base", label: "Knowledge base" },
     { href: "/admin/sessions", label: "Sessions" },
+    { href: "/admin/settings", label: "Settings" },
   ];
 
   return (
@@ -56,7 +60,7 @@ export default async function AdminLayout({
               ADMIN
             </Badge>
             <span className="text-sm font-semibold text-slate-100">
-              Blueprint Agent
+              {app_name}
             </span>
           </div>
           <nav className="flex flex-col gap-0.5 px-3 py-4">

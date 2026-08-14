@@ -3,6 +3,7 @@ import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
+import { getSiteSettings } from "@/lib/site-settings";
 
 // Inter, with the standard system-font fallback stack — matches the clean,
 // neutral UI sans used across ChatGPT/Claude-style chat products.
@@ -24,11 +25,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Blueprint Agent — FirstWave",
-  description:
-    "Turn a raw idea into a structured, 9-section product blueprint.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { app_name, hero_title } = await getSiteSettings();
+  return {
+    title: `${app_name} — FirstWave`,
+    description: hero_title,
+  };
+}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

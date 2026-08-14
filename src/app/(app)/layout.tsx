@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/login/actions";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export default async function AppLayout({
   children,
@@ -17,6 +18,8 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  const { app_name } = await getSiteSettings();
+
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-black">
       <header className="flex items-center justify-between border-b border-black/[.08] bg-white px-6 py-3 dark:border-white/[.1] dark:bg-zinc-950">
@@ -24,7 +27,7 @@ export default async function AppLayout({
           href="/dashboard"
           className="text-sm font-semibold text-zinc-950 dark:text-zinc-50"
         >
-          Blueprint Agent
+          {app_name}
         </Link>
         <div className="flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
           <span>{user.email}</span>
