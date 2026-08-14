@@ -8,16 +8,17 @@ export interface QuickReply {
 }
 
 // A normal turn is one model call and usually lands well under this. Past
-// it, we're most likely in the slower path: the interview just wrapped and
-// the agent is drafting the full blueprint (a second, heavier call) — so the
-// phrase below is a real, timing-based signal, not a scripted animation.
+// it, the wait is just taking longer than usual — could be a heavier
+// question, could be the final blueprint synthesis, and the client has no
+// way to tell which. So the longer-wait phrase stays deliberately
+// non-specific about *why*, rather than guessing "drafting your blueprint"
+// and risking that guess being visibly wrong mid-interview.
 const LONG_WAIT_MS = 12_000;
 
 /**
- * Two honest phases, not a fabricated sequence: there's exactly one thing
- * happening server-side (a single model call) until it isn't — a wait that
- * runs past LONG_WAIT_MS is the tell that the heavier blueprint-drafting
- * call kicked in, so the copy switches to reflect that likelihood.
+ * Two honest phases: there's exactly one thing happening server-side (a
+ * single model call) until it's taking noticeably longer than that — at
+ * which point the copy reassures without claiming a specific cause.
  */
 function useWorkingPhrase(active: boolean) {
   const [longWait, setLongWait] = useState(false);
@@ -32,7 +33,7 @@ function useWorkingPhrase(active: boolean) {
   }, [active]);
 
   return longWait
-    ? "Putting your blueprint together — this one takes a bit longer…"
+    ? "Taking extra care with this one — almost there…"
     : "The agent is thinking about your answer…";
 }
 

@@ -20,6 +20,12 @@ function excerpt(text: string, max = 42) {
   return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine;
 }
 
+// Isolated so the impure Date.now() call happens in a plain function, not
+// directly in the page component's render body.
+function isWithinMs(isoTimestamp: string, windowMs: number): boolean {
+  return Date.now() - new Date(isoTimestamp).getTime() < windowMs;
+}
+
 export default async function SessionPage({
   params,
 }: {
@@ -74,6 +80,18 @@ export default async function SessionPage({
     label: excerpt(m.content),
   }));
 
+  // Only the message from the turn that *just* happened should type itself
+  // out — a reload (or coming back later) re-fetches the same "last
+  // message" from the DB, but by then it's old news and should render
+  // instantly, not replay the typing animation. "Just happened" is decided
+  // by age, not identity: a live send always renders within a second or
+  // two of the row's created_at, while any genuine reload happens well
+  // after the reply was already read.
+  const ANIMATE_WINDOW_MS = 15_000;
+  const isFreshlyArrived =
+    lastMessage?.role === "assistant" &&
+    isWithinMs(lastMessage.created_at, ANIMATE_WINDOW_MS);
+
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-8">
       <div className="mb-4">
@@ -112,7 +130,7 @@ export default async function SessionPage({
               {message.role === "assistant" ? (
                 <AssistantMessage
                   blocks={splitMarkdownBlocks(message.content)}
-                  animate={message.id === lastMessage?.id}
+                  animate={message.id === lastMessage?.id && isFreshlyArrived}
                   bubbleClassName={bubbleClassName}
                   responseTimeMs={message.response_time_ms}
                 />
