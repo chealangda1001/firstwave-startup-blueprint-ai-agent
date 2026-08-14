@@ -63,6 +63,14 @@ void main() {
     c = mix(c, rc, vec3(ring(pr, uBaseRadius + fi * uRadiusStep, pow(uRingGap, fi), i == 0 ? 0.0 : 2.95 * fi, px)));
   }
   c *= 1.0 + uBurst * 2.0;
+
+  // A slow arc of brighter light drifting around the circumference — the
+  // rings read as gradually catching light bit by bit rather than glowing
+  // uniformly all at once, like a torchlight passing behind them.
+  float theta = atan(p.y, p.x);
+  float sweep = pow(0.5 + 0.5 * cos(theta - uTime * 0.12), 3.0);
+  c *= mix(0.3, 1.0, sweep);
+
   float n = fract(sin(dot(gl_FragCoord.xy + uTime * 100.0, vec2(12.9898, 78.233))) * 43758.5453);
   c += (n - 0.5) * uNoiseAmount;
   gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)) * uOpacity);

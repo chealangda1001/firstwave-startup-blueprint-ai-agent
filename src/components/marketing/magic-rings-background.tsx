@@ -62,25 +62,31 @@ export function MagicRingsBackground() {
 
   if (!canAnimate) return <StaticGlowFallback />;
 
-  // Monochrome white-to-zinc glow (not the library's magenta/cyan default)
-  // to match the rest of the app's black-and-white design language, and
-  // toned down — fewer rings, no blur/noise/mouse tracking — since this is
-  // ambient texture behind the headline, not the focal point.
+  // Strictly neutral gray, not Tailwind's "zinc" token — zinc carries a
+  // faint cool/blue lean that the shader's exponential glow amplifies into
+  // a visible purple cast. #ffffff and #808080 have equal R/G/B channels,
+  // which stay equal through any gamma or attenuation math, guaranteeing
+  // zero color tint — true black-and-white "natural light" rather than a
+  // colored glow. Slowed way down (speed, fadeIn/fadeOut) and toned down
+  // (fewer rings, no blur/noise/mouse tracking) since this is calm ambient
+  // texture behind the headline, not the focal point.
   return (
     <MagicRings
       color="#ffffff"
-      colorTwo="#71717a"
+      colorTwo="#808080"
       ringCount={4}
-      speed={0.6}
-      attenuation={12}
-      lineThickness={1.5}
-      baseRadius={0.32}
+      speed={0.15}
+      attenuation={8}
+      lineThickness={2}
+      baseRadius={0.28}
       radiusStep={0.12}
       scaleRate={0.12}
-      opacity={0.55}
+      opacity={0.8}
       blur={0}
       noiseAmount={0.03}
       ringGap={1.4}
+      fadeIn={1.6}
+      fadeOut={1.2}
       followMouse={false}
       clickBurst={false}
     />
