@@ -1,6 +1,6 @@
 import "server-only";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { anthropic, BLUEPRINT_MODEL } from "./anthropic-client";
+import { anthropic } from "./anthropic-client";
 import { BLUEPRINT_SYSTEM_PROMPT } from "./system-prompt";
 import {
   BlueprintArtifactSchema,
@@ -9,6 +9,8 @@ import {
   type TurnEnvelope,
 } from "./schemas";
 import { retrieveKnowledgeBase, formatRetrievedContext } from "./retrieve-knowledge-base";
+import { getSiteSettings } from "@/lib/site-settings";
+import type { AgentEffort } from "@/lib/agent-config";
 
 export interface HistoryMessage {
   role: "user" | "assistant";
@@ -75,10 +77,13 @@ async function retrieveContextForHistory(
  * only — no 'log' rows); pass an empty array for a brand-new session, which
  * triggers the Stage 0 kickoff.
  *
- * Thinking is explicitly disabled here: this is a fast, structured-output
- * conversational turn, not a task where deep reasoning materially changes
- * the next question asked. The heavier synthesis work (generateBlueprintArtifact)
- * keeps adaptive thinking on.
+ * Model, effort, and thinking are all admin-configurable (site_settings,
+ * migration 0018) rather than hardcoded — the founder-facing latency of
+ * this specific call is exactly what that setting exists to tune. Thinking
+ * defaults off: this is meant to be a fast, structured-output conversational
+ * turn, not a task where deep reasoning materially changes the next
+ * question asked (though an admin can turn it on). The heavier synthesis
+ * work (generateBlueprintArtifact) always keeps thinking on regardless.
  */
 export async function runAgentTurn(
   history: HistoryMessage[]
@@ -88,14 +93,19 @@ export async function runAgentTurn(
       ? history
       : [{ role: "user" as const, content: KICKOFF_MESSAGE }];
 
-  const retrievedContextText = await retrieveContextForHistory(history);
+  const [retrievedContextText, settings] = await Promise.all([
+    retrieveContextForHistory(history),
+    getSiteSettings(),
+  ]);
 
   const response = await anthropic.messages.parse({
-    model: BLUEPRINT_MODEL,
+    model: settings.agent_model,
     max_tokens: 4096,
-    thinking: { type: "disabled" },
+    thinking: settings.agent_thinking_enabled
+      ? { type: "enabled", budget_tokens: 2048 }
+      : { type: "disabled" },
     output_config: {
-      effort: "medium",
+      effort: settings.agent_effort as AgentEffort,
       format: zodOutputFormat(TurnEnvelopeSchema),
     },
     system: buildSystemBlock(retrievedContextText),
@@ -112,6 +122,9 @@ export async function runAgentTurn(
 /**
  * Synthesizes the full 9-section blueprint artifact from the completed
  * transcript. Called once, when a turn's session_status flips to "complete".
+ * Uses the same admin-configurable model as runAgentTurn, but its own
+ * (typically higher) effort setting — this one-time synthesis isn't
+ * latency-sensitive the same way a live conversational turn is.
  */
 export async function generateBlueprintArtifact(
   history: HistoryMessage[]
@@ -121,11 +134,13 @@ export async function generateBlueprintArtifact(
     { role: "user" as const, content: GENERATE_ARTIFACT_MESSAGE },
   ];
 
+  const settings = await getSiteSettings();
+
   const response = await anthropic.messages.parse({
-    model: BLUEPRINT_MODEL,
+    model: settings.agent_model,
     max_tokens: 16000,
     output_config: {
-      effort: "high",
+      effort: settings.artifact_effort as AgentEffort,
       format: zodOutputFormat(BlueprintArtifactSchema),
     },
     // No retrieval here — this is synthesis from the completed transcript,

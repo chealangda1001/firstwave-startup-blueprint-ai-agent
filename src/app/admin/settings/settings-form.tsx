@@ -6,7 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AGENT_MODEL_OPTIONS,
+  AGENT_EFFORT_OPTIONS,
+  type AgentEffort,
+} from "@/lib/agent-config";
 import { updateSiteSettings, type SiteSettingsInput } from "./actions";
+
+const EFFORT_LABEL: Record<AgentEffort, string> = {
+  low: "Low — fastest, least thorough",
+  medium: "Medium — balanced",
+  high: "High — slowest, most thorough",
+};
 
 export function SettingsForm({ initial }: { initial: SiteSettingsInput }) {
   const [isPending, startTransition] = useTransition();
@@ -15,6 +34,14 @@ export function SettingsForm({ initial }: { initial: SiteSettingsInput }) {
   const [heroSubtitle, setHeroSubtitle] = useState(initial.hero_subtitle);
   const [heroDescription, setHeroDescription] = useState(
     initial.hero_description
+  );
+  const [agentModel, setAgentModel] = useState(initial.agent_model);
+  const [agentEffort, setAgentEffort] = useState(initial.agent_effort);
+  const [artifactEffort, setArtifactEffort] = useState(
+    initial.artifact_effort
+  );
+  const [thinkingEnabled, setThinkingEnabled] = useState(
+    initial.agent_thinking_enabled
   );
 
   function handleSubmit(e: React.FormEvent) {
@@ -26,6 +53,10 @@ export function SettingsForm({ initial }: { initial: SiteSettingsInput }) {
           hero_title: heroTitle,
           hero_subtitle: heroSubtitle,
           hero_description: heroDescription,
+          agent_model: agentModel,
+          agent_effort: agentEffort,
+          artifact_effort: artifactEffort,
+          agent_thinking_enabled: thinkingEnabled,
         });
         toast.success("Settings saved.");
       } catch (err) {
@@ -90,6 +121,99 @@ export function SettingsForm({ initial }: { initial: SiteSettingsInput }) {
         <p className="text-xs text-slate-500">
           The longer supporting text below the subtitle.
         </p>
+      </div>
+
+      <div className="flex flex-col gap-4 border-t border-slate-200 pt-5">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">
+            Blueprint agent
+          </p>
+          <p className="text-xs text-slate-500">
+            Takes effect on the very next message — no deploy needed.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label>Model</Label>
+          <Select value={agentModel} onValueChange={(v) => v && setAgentModel(v)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {AGENT_MODEL_OPTIONS.map((model) => (
+                <SelectItem key={model} value={model}>
+                  {model}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-slate-500">
+            Used for both the conversational turns and the final blueprint
+            synthesis. Sonnet is the fast/cost-effective default; Opus is
+            noticeably slower and is best reserved for cases where its
+            extra depth is worth the wait.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label>Conversation effort</Label>
+            <Select value={agentEffort} onValueChange={(v) => v && setAgentEffort(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AGENT_EFFORT_OPTIONS.map((effort) => (
+                  <SelectItem key={effort} value={effort}>
+                    {EFFORT_LABEL[effort]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Blueprint synthesis effort</Label>
+            <Select
+              value={artifactEffort}
+              onValueChange={(v) => v && setArtifactEffort(v)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AGENT_EFFORT_OPTIONS.map((effort) => (
+                  <SelectItem key={effort} value={effort}>
+                    {EFFORT_LABEL[effort]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <p className="-mt-2 text-xs text-slate-500">
+          Conversation effort applies to every founder-facing question —
+          keep it low or medium for latency. Synthesis only runs once per
+          session at the very end, so a slower high-effort pass there
+          rarely costs a founder any noticeable wait.
+        </p>
+
+        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+          <div>
+            <Label htmlFor="thinking-toggle" className="text-sm">
+              Extended thinking (conversation only)
+            </Label>
+            <p className="text-xs text-slate-500">
+              Adds real latency to every turn — leave off unless a specific
+              model is visibly struggling with follow-up quality.
+            </p>
+          </div>
+          <Switch
+            id="thinking-toggle"
+            checked={thinkingEnabled}
+            onCheckedChange={setThinkingEnabled}
+          />
+        </div>
       </div>
 
       <Button type="submit" disabled={isPending} className="self-start">

@@ -369,7 +369,11 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          agent_effort: string
+          agent_model: string
+          agent_thinking_enabled: boolean
           app_name: string
+          artifact_effort: string
           hero_description: string
           hero_subtitle: string
           hero_title: string
@@ -377,7 +381,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agent_effort?: string
+          agent_model?: string
+          agent_thinking_enabled?: boolean
           app_name?: string
+          artifact_effort?: string
           hero_description?: string
           hero_subtitle?: string
           hero_title?: string
@@ -385,7 +393,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agent_effort?: string
+          agent_model?: string
+          agent_thinking_enabled?: boolean
           app_name?: string
+          artifact_effort?: string
           hero_description?: string
           hero_subtitle?: string
           hero_title?: string

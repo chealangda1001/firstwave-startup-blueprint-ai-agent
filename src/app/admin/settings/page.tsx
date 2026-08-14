@@ -9,8 +9,8 @@ export default async function AdminSettingsPage() {
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Settings</h1>
         <p className="text-sm text-slate-500">
-          The app name and homepage hero copy — public-facing text, live the
-          moment you save.
+          The app name, homepage hero copy, and blueprint agent model —
+          live the moment you save.
         </p>
       </div>
 
