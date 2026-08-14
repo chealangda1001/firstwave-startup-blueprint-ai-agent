@@ -71,8 +71,13 @@ export default async function AdminSessionsPage() {
                 <TableCell className="text-sm text-slate-700">
                   {session.profiles?.full_name || session.profiles?.email || "—"}
                 </TableCell>
-                <TableCell className="max-w-[220px] truncate text-sm font-medium text-slate-900">
-                  {session.title || session.domain || "Untitled blueprint"}
+                <TableCell className="max-w-[220px] truncate text-sm font-medium">
+                  <Link
+                    href={`/admin/sessions/${session.id}`}
+                    className="text-slate-900 hover:underline"
+                  >
+                    {session.title || session.domain || "Untitled blueprint"}
+                  </Link>
                 </TableCell>
                 <TableCell className="text-sm text-slate-500">
                   {session.canvas_type === "lean"

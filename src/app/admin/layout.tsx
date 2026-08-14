@@ -48,6 +48,7 @@ export default async function AdminLayout({
     { href: "/admin", label: "Overview" },
     { href: "/admin/knowledge-base", label: "Knowledge base" },
     { href: "/admin/sessions", label: "Sessions" },
+    { href: "/admin/users", label: "Users" },
     { href: "/admin/settings", label: "Settings" },
   ];
 
