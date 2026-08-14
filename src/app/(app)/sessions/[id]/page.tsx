@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { sendMessage } from "./actions";
+import { sendMessage, retryLastTurn } from "./actions";
 import { ReplyComposer, type QuickReply } from "./reply-composer";
 import { MessageContent } from "./message-content";
 import { AssistantMessage } from "./assistant-message";
@@ -54,6 +54,7 @@ export default async function SessionPage({
 
   const isComplete = session.status === "complete";
   const boundSendMessage = sendMessage.bind(null, id);
+  const boundRetryLastTurn = retryLastTurn.bind(null, id);
 
   // log_message is an internal status line the agent emits per turn — it's
   // not part of the conversation for the founder to read back later, so it
@@ -91,6 +92,17 @@ export default async function SessionPage({
   const isFreshlyArrived =
     lastMessage?.role === "assistant" &&
     isWithinMs(lastMessage.created_at, ANIMATE_WINDOW_MS);
+
+  // A last message still sitting on "user" means the founder's answer never
+  // got a reply — the agent call failed (or the app crashed) and nothing
+  // else moves the conversation forward. Gated by age so a reload during a
+  // still-in-flight (not yet failed) request doesn't show a premature
+  // retry — RETRY_AFTER_MS is comfortably past how long even a slow normal
+  // turn takes.
+  const RETRY_AFTER_MS = 25_000;
+  const needsRetry =
+    lastMessage?.role === "user" &&
+    !isWithinMs(lastMessage.created_at, RETRY_AFTER_MS);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-8">
@@ -150,6 +162,8 @@ export default async function SessionPage({
         <ReplyComposer
           key={lastMessage?.id}
           sendMessage={boundSendMessage}
+          retryLastTurn={boundRetryLastTurn}
+          needsRetry={needsRetry}
           quickReplies={quickReplies}
           multiSelect={quickRepliesMultiSelect}
         />

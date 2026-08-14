@@ -70,10 +70,14 @@ function Spinner() {
  */
 export function ReplyComposer({
   sendMessage,
+  retryLastTurn,
+  needsRetry,
   quickReplies,
   multiSelect,
 }: {
   sendMessage: (formData: FormData) => void | Promise<void>;
+  retryLastTurn: () => void | Promise<void>;
+  needsRetry: boolean;
   quickReplies: QuickReply[] | null;
   multiSelect: boolean;
 }) {
@@ -86,6 +90,12 @@ export function ReplyComposer({
     formData.set("content", value);
     startTransition(() => {
       sendMessage(formData);
+    });
+  }
+
+  function handleRetry() {
+    startTransition(() => {
+      retryLastTurn();
     });
   }
 
@@ -113,6 +123,19 @@ export function ReplyComposer({
         <div className="flex items-center gap-2 self-start rounded-2xl border border-dashed border-black/[.15] px-4 py-2 text-xs italic text-zinc-500 dark:border-white/[.2] dark:text-zinc-500">
           <Spinner />
           <span>{workingPhrase}</span>
+        </div>
+      )}
+
+      {needsRetry && !isPending && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950 dark:text-amber-200">
+          <span>Your last message didn&apos;t get a reply — something went wrong.</span>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="shrink-0 rounded-full bg-amber-900 px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-800 dark:bg-amber-200 dark:text-amber-950 dark:hover:bg-amber-100"
+          >
+            Retry
+          </button>
         </div>
       )}
 
