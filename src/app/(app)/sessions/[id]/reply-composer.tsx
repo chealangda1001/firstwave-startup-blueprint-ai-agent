@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { flushSync } from "react-dom";
+import { usePendingMessage } from "./pending-message-context";
 
 export interface QuickReply {
   label: string;
@@ -84,8 +86,34 @@ export function ReplyComposer({
   const [isPending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const workingPhrase = useWorkingPhrase(isPending);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { setPendingMessage } = usePendingMessage();
+
+  // Two different ways this turn can finish, two different ways to know:
+  // a successful turn changes the transcript's last message, which remounts
+  // this component (see `key={lastMessage?.id}` in page.tsx) — so the fresh
+  // mount itself is the "done" signal, since isPending never gets the
+  // chance to settle to false in the instance that submitted it. A failed
+  // turn leaves the last message unchanged, so no remount happens and this
+  // instance survives to see isPending settle instead.
+  useEffect(() => {
+    setPendingMessage(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!isPending) setPendingMessage(null);
+  }, [isPending, setPendingMessage]);
 
   function submitValue(value: string) {
+    // flushSync forces this paint to happen immediately, outside whatever
+    // transition startTransition below establishes — without it, this
+    // update gets batched into that transition's low-priority commit and
+    // never visibly paints until the transition itself resolves, which
+    // defeats the point of an optimistic bubble.
+    flushSync(() => {
+      setPendingMessage(value);
+    });
     const formData = new FormData();
     formData.set("content", value);
     startTransition(() => {
@@ -177,6 +205,22 @@ export function ReplyComposer({
 
       <form
         action={(formData) => {
+          const value = String(formData.get("content") ?? "").trim();
+          if (!value) return;
+
+          // Move the text to the transcript immediately — clear the box
+          // and show the optimistic bubble right away — rather than
+          // leaving the typed answer sitting in the input until the round
+          // trip to the server completes. flushSync forces this to paint
+          // now: <form action> is itself an implicit transition in React
+          // 19, so without it this update gets swept into that same
+          // low-priority batch and never visibly appears until the whole
+          // transition resolves — silently defeating the optimistic bubble.
+          flushSync(() => {
+            setPendingMessage(value);
+          });
+          if (textareaRef.current) textareaRef.current.value = "";
+
           startTransition(() => {
             sendMessage(formData);
           });
@@ -184,6 +228,7 @@ export function ReplyComposer({
         className="flex items-end gap-2"
       >
         <textarea
+          ref={textareaRef}
           name="content"
           required
           rows={2}

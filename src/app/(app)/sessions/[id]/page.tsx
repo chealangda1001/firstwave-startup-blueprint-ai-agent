@@ -8,6 +8,8 @@ import { AssistantMessage } from "./assistant-message";
 import { ChatTranscript, type NavItem } from "./chat-transcript";
 import { splitMarkdownBlocks } from "@/lib/blueprint/split-blocks";
 import { stageLabel, statusLabel } from "@/lib/blueprint/labels";
+import { PendingMessageProvider } from "./pending-message-context";
+import { PendingUserBubble } from "./pending-user-bubble";
 
 const ROLE_STYLE: Record<string, string> = {
   assistant:
@@ -127,47 +129,50 @@ export default async function SessionPage({
         </div>
       )}
 
-      <ChatTranscript navItems={navItems}>
-        {messages.map((message) => {
-          const bubbleClassName = `leading-relaxed ${
-            ROLE_STYLE[message.role] ?? ROLE_STYLE.assistant
-          }`;
+      <PendingMessageProvider userBubbleClassName={ROLE_STYLE.user}>
+        <ChatTranscript navItems={navItems}>
+          {messages.map((message) => {
+            const bubbleClassName = `leading-relaxed ${
+              ROLE_STYLE[message.role] ?? ROLE_STYLE.assistant
+            }`;
 
-          return (
-            <div
-              key={message.id}
-              data-message-id={message.id}
-              className="flex flex-col gap-3"
-            >
-              {message.role === "assistant" ? (
-                <AssistantMessage
-                  blocks={splitMarkdownBlocks(message.content)}
-                  animate={message.id === lastMessage?.id && isFreshlyArrived}
-                  bubbleClassName={bubbleClassName}
-                  responseTimeMs={message.response_time_ms}
-                />
-              ) : (
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${bubbleClassName}`}
-                >
-                  <MessageContent content={message.content} />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </ChatTranscript>
+            return (
+              <div
+                key={message.id}
+                data-message-id={message.id}
+                className="flex flex-col gap-3"
+              >
+                {message.role === "assistant" ? (
+                  <AssistantMessage
+                    blocks={splitMarkdownBlocks(message.content)}
+                    animate={message.id === lastMessage?.id && isFreshlyArrived}
+                    bubbleClassName={bubbleClassName}
+                    responseTimeMs={message.response_time_ms}
+                  />
+                ) : (
+                  <div
+                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${bubbleClassName}`}
+                  >
+                    <MessageContent content={message.content} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <PendingUserBubble />
+        </ChatTranscript>
 
-      {!isComplete && (
-        <ReplyComposer
-          key={lastMessage?.id}
-          sendMessage={boundSendMessage}
-          retryLastTurn={boundRetryLastTurn}
-          needsRetry={needsRetry}
-          quickReplies={quickReplies}
-          multiSelect={quickRepliesMultiSelect}
-        />
-      )}
+        {!isComplete && (
+          <ReplyComposer
+            key={lastMessage?.id}
+            sendMessage={boundSendMessage}
+            retryLastTurn={boundRetryLastTurn}
+            needsRetry={needsRetry}
+            quickReplies={quickReplies}
+            multiSelect={quickRepliesMultiSelect}
+          />
+        )}
+      </PendingMessageProvider>
     </div>
   );
 }
