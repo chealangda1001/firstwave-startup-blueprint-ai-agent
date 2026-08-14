@@ -85,6 +85,27 @@ async function retrieveContextForHistory(
  * question asked (though an admin can turn it on). The heavier synthesis
  * work (generateBlueprintArtifact) always keeps thinking on regardless.
  */
+// Structured outputs are schema-valid by definition, but the model can
+// still satisfy the schema with degenerate junk instead of a real answer
+// under time/effort pressure — observed in production as reply_markdown
+// and log_message both coming back as the literal word "placeholder".
+// Since that's indistinguishable from a real turn to the type system, we
+// check for it explicitly and retry rather than ever showing it to a
+// founder.
+const DEGENERATE_TEXT = new Set(["placeholder", "tbd", "n/a", "todo", "..."]);
+
+function isDegenerateTurn(turn: TurnEnvelope): boolean {
+  const reply = turn.reply_markdown.trim().toLowerCase();
+  const log = turn.log_message.trim().toLowerCase();
+  return (
+    DEGENERATE_TEXT.has(reply) ||
+    DEGENERATE_TEXT.has(log) ||
+    reply.length < 5
+  );
+}
+
+const MAX_TURN_ATTEMPTS = 2;
+
 export async function runAgentTurn(
   history: HistoryMessage[]
 ): Promise<TurnEnvelope> {
@@ -98,25 +119,43 @@ export async function runAgentTurn(
     getSiteSettings(),
   ]);
 
-  const response = await anthropic.messages.parse({
-    model: settings.agent_model,
-    max_tokens: 4096,
-    thinking: settings.agent_thinking_enabled
-      ? { type: "enabled", budget_tokens: 2048 }
-      : { type: "disabled" },
-    output_config: {
-      effort: settings.agent_effort as AgentEffort,
-      format: zodOutputFormat(TurnEnvelopeSchema),
-    },
-    system: buildSystemBlock(retrievedContextText),
-    messages,
-  });
+  let lastTurn: TurnEnvelope | null = null;
 
-  if (!response.parsed_output) {
-    throw new Error("Blueprint agent returned no parsed output for this turn.");
+  for (let attempt = 1; attempt <= MAX_TURN_ATTEMPTS; attempt++) {
+    const response = await anthropic.messages.parse({
+      model: settings.agent_model,
+      max_tokens: 4096,
+      thinking: settings.agent_thinking_enabled
+        ? { type: "enabled", budget_tokens: 2048 }
+        : { type: "disabled" },
+      output_config: {
+        // Bump to high effort on a retry — the degenerate output is a sign
+        // the model rushed it the first time.
+        effort: attempt === 1 ? (settings.agent_effort as AgentEffort) : "high",
+        format: zodOutputFormat(TurnEnvelopeSchema),
+      },
+      system: buildSystemBlock(retrievedContextText),
+      messages,
+    });
+
+    if (!response.parsed_output) {
+      throw new Error("Blueprint agent returned no parsed output for this turn.");
+    }
+
+    lastTurn = response.parsed_output;
+    if (!isDegenerateTurn(lastTurn)) {
+      return lastTurn;
+    }
+
+    console.error(
+      `Blueprint agent returned degenerate output on attempt ${attempt}`,
+      lastTurn
+    );
   }
 
-  return response.parsed_output;
+  throw new Error(
+    "Blueprint agent returned degenerate output after retrying."
+  );
 }
 
 /**
