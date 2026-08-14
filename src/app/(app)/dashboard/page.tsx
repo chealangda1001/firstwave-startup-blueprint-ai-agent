@@ -1,12 +1,6 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createSession } from "./actions";
-
-const STATUS_LABEL: Record<string, string> = {
-  in_progress: "In progress",
-  complete: "Complete",
-  abandoned: "Abandoned",
-};
+import { SessionCard } from "./session-card";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -51,29 +45,7 @@ export default async function DashboardPage() {
       {sessions && sessions.length > 0 && (
         <ul className="flex flex-col gap-3">
           {sessions.map((session) => (
-            <li key={session.id}>
-              <Link
-                href={`/sessions/${session.id}`}
-                className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white px-4 py-3 transition-colors hover:border-zinc-950/30 dark:border-white/[.1] dark:bg-zinc-950 dark:hover:border-zinc-50/30"
-              >
-                <div>
-                  <p className="text-sm font-medium text-zinc-950 dark:text-zinc-50">
-                    {session.title || session.domain || "Untitled blueprint"}
-                  </p>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-500">
-                    {session.canvas_type
-                      ? session.canvas_type === "lean"
-                        ? "Lean Canvas"
-                        : "Business Model Canvas"
-                      : "Canvas not yet chosen"}{" "}
-                    · {session.current_stage}
-                  </p>
-                </div>
-                <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                  {STATUS_LABEL[session.status] ?? session.status}
-                </span>
-              </Link>
-            </li>
+            <SessionCard key={session.id} session={session} />
           ))}
         </ul>
       )}

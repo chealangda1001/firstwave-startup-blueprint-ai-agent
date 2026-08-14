@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { runAgentTurn } from "@/lib/blueprint/agent";
 
@@ -78,4 +79,49 @@ export async function createSession() {
   }
 
   redirect(`/sessions/${session.id}`);
+}
+
+export async function renameSession(sessionId: string, title: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const trimmed = title.trim();
+  if (!trimmed) {
+    throw new Error("Title can't be empty.");
+  }
+
+  // RLS ("sessions: update own") is the real enforcement — this only ever
+  // touches a row where founder_id = auth.uid() regardless of the id passed.
+  const { error } = await supabase
+    .from("sessions")
+    .update({ title: trimmed })
+    .eq("id", sessionId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/sessions/${sessionId}`);
+}
+
+export async function deleteSession(sessionId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // RLS ("sessions: delete own") is the real enforcement; cascade deletes
+  // session_messages/blueprints via their FK to sessions.
+  const { error } = await supabase.from("sessions").delete().eq("id", sessionId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/dashboard");
 }
