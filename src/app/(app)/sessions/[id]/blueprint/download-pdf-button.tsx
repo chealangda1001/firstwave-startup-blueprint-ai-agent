@@ -10,24 +10,19 @@ import { getBlueprintPdfUrl } from "./actions";
  * getBlueprintPdfUrl). Opens in a new tab rather than a same-tab
  * navigation so the founder never loses their place in the app.
  *
- * `kind` picks which PDF variant: the full written report, or the
- * one-page printable canvas poster (Lean Canvas / BMC) meant to be pinned
- * on a wall.
+ * This is the full multi-page written report only. The one-page canvas
+ * poster (Lean Canvas / BMC) isn't a generated PDF at all anymore — see
+ * blueprint/canvas/page.tsx, a plain print-styled HTML page the founder
+ * saves via the browser's own print dialog.
  */
 const DEFAULT_CLASSNAME =
   "rounded-full bg-zinc-950 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200";
 
 export function DownloadPdfButton({
   sessionId,
-  kind = "report",
-  label,
-  pendingLabel,
   className,
 }: {
   sessionId: string;
-  kind?: "report" | "canvas_poster";
-  label?: string;
-  pendingLabel?: string;
   className?: string;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -47,7 +42,7 @@ export function DownloadPdfButton({
 
     startTransition(async () => {
       try {
-        const url = await getBlueprintPdfUrl(sessionId, kind);
+        const url = await getBlueprintPdfUrl(sessionId);
         if (pdfTab) {
           pdfTab.location.href = url;
         } else {
@@ -72,7 +67,7 @@ export function DownloadPdfButton({
       disabled={isPending}
       className={className ?? DEFAULT_CLASSNAME}
     >
-      {isPending ? pendingLabel ?? "Preparing PDF…" : label ?? "Download PDF"}
+      {isPending ? "Preparing PDF…" : "Download PDF"}
     </button>
   );
 }

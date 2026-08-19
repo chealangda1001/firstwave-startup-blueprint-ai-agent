@@ -148,13 +148,12 @@ export default async function BlueprintPage({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           <DownloadPdfButton sessionId={id} />
-          <DownloadPdfButton
-            sessionId={id}
-            kind="canvas_poster"
-            label="Download canvas poster"
-            pendingLabel="Preparing poster…"
-            className="rounded-full border border-black/[.12] bg-transparent px-4 py-2 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[.16] dark:text-zinc-300 dark:hover:bg-zinc-900"
-          />
+          <Link
+            href={`/sessions/${id}/blueprint/canvas`}
+            className="rounded-full border border-black/[.12] bg-transparent px-4 py-2 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-white/[.16] dark:text-zinc-300 dark:hover:bg-zinc-900"
+          >
+            View printable canvas →
+          </Link>
         </div>
       </div>
 

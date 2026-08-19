@@ -23,7 +23,7 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-black">
-      <header className="flex items-center justify-between border-b border-black/[.08] bg-white px-6 py-3 dark:border-white/[.1] dark:bg-zinc-950">
+      <header className="flex items-center justify-between border-b border-black/[.08] bg-white px-6 py-3 print:hidden dark:border-white/[.1] dark:bg-zinc-950">
         <Link
           href="/dashboard"
           className="text-sm font-semibold text-zinc-950 dark:text-zinc-50"
