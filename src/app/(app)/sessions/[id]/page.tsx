@@ -17,11 +17,17 @@ import type { CanvasChoice } from "@/lib/blueprint/canvas-choice";
 // Route segment config, not a plain export — this is what actually raises
 // the Vercel function timeout for Server Actions invoked from this page
 // (a "use server" file itself can only export async functions, so this
-// can't live in actions.ts). Default is 10s on Hobby;
-// generateBlueprintForSession's two parallel synthesis calls alone can
-// take ~20-30s on a large transcript, so 60s is real headroom, not just
-// insurance.
-export const maxDuration = 60;
+// can't live in actions.ts). Default is 10s on Hobby.
+//
+// Raised from 60 to 280 after a real production failure: 60s was hit
+// exactly — Vercel logs showed "Task timed out after 60 seconds" mid
+// blueprint synthesis. That's a hard kill, not a JS exception, so
+// generateBlueprintForSession's own try/catch (which resets status back
+// to in_progress on failure) never got the chance to run — the session
+// was left stuck on "generating" forever with no recovery path. 280s is
+// comfortably under Vercel's serverless ceiling and gives real headroom
+// for the two parallel synthesis calls on a long, detailed transcript.
+export const maxDuration = 280;
 
 const ROLE_STYLE: Record<string, string> = {
   assistant:

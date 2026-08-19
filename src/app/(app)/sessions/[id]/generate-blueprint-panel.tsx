@@ -36,6 +36,19 @@ function Spinner() {
 // the founder guessing whether it's stuck.
 const LONG_WAIT_MS = 15_000;
 
+// A real production failure showed why this can't just be "wait forever":
+// Vercel hard-kills the function at its route maxDuration (had been 60s,
+// now 280s — see page.tsx) if synthesis runs long. That kill is not a JS
+// exception, so generateBlueprintForSession's own try/catch never runs to
+// reset the session out of "generating" — the request can die with no
+// response ever reaching this component, leaving isPending stuck true
+// forever with nothing for the founder to do. Past this point, offer a
+// manual reload regardless of what the pending request is doing — a full
+// reload re-fetches session state fresh and, since the session is still
+// sitting on "generating" server-side either way, remounts this panel and
+// fires a genuinely fresh attempt.
+const STUCK_WAIT_MS = 120_000;
+
 /**
  * Renders in place of the reply composer the instant a session lands on
  * status "generating" (see page.tsx) — fires the actual synthesis call on
@@ -48,6 +61,7 @@ const LONG_WAIT_MS = 15_000;
 export function GenerateBlueprintPanel({ sessionId }: { sessionId: string }) {
   const [isPending, startTransition] = useTransition();
   const [longWait, setLongWait] = useState(false);
+  const [stuck, setStuck] = useState(false);
   const [failed, setFailed] = useState(false);
   const startedRef = useRef(false);
   const router = useRouter();
@@ -93,6 +107,15 @@ export function GenerateBlueprintPanel({ sessionId }: { sessionId: string }) {
     };
   }, [isPending]);
 
+  useEffect(() => {
+    if (!isPending) return;
+    const timer = setTimeout(() => setStuck(true), STUCK_WAIT_MS);
+    return () => {
+      clearTimeout(timer);
+      setStuck(false);
+    };
+  }, [isPending]);
+
   if (failed) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950 dark:text-amber-200">
@@ -109,13 +132,27 @@ export function GenerateBlueprintPanel({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-sm text-zinc-700 dark:border-white/[.1] dark:bg-zinc-950 dark:text-zinc-300">
-      <Spinner />
-      <span>
-        {longWait
-          ? "Still putting it together — the full 9-section blueprint takes a bit longer than a normal reply."
-          : "Turning your interview into your product blueprint…"}
-      </span>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-3 rounded-2xl border border-black/[.08] bg-white px-4 py-3 text-sm text-zinc-700 dark:border-white/[.1] dark:bg-zinc-950 dark:text-zinc-300">
+        <Spinner />
+        <span>
+          {longWait
+            ? "Still putting it together — the full 9-section blueprint takes a bit longer than a normal reply."
+            : "Turning your interview into your product blueprint…"}
+        </span>
+      </div>
+      {stuck && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950 dark:text-amber-200">
+          <span>This is taking longer than it should. Reloading is safe — it won&apos;t lose your interview.</span>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="shrink-0 rounded-full bg-amber-900 px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-800 dark:bg-amber-200 dark:text-amber-950 dark:hover:bg-amber-100"
+          >
+            Reload page
+          </button>
+        </div>
+      )}
     </div>
   );
 }
