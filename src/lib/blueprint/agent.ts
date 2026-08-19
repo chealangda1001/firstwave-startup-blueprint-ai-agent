@@ -13,6 +13,10 @@ import { retrieveKnowledgeBase, formatRetrievedContext } from "./retrieve-knowle
 import { getSiteSettings } from "@/lib/site-settings";
 import type { AgentEffort } from "@/lib/agent-config";
 
+export interface CanvasLock {
+  type: "lean" | "bmc";
+}
+
 export interface HistoryMessage {
   role: "user" | "assistant";
   content: string;
@@ -29,7 +33,40 @@ const GENERATE_ARTIFACT_MESSAGE =
 // wherever the conversation has drifted to, not just where it started.
 const RETRIEVAL_HISTORY_WINDOW = 3;
 
-function buildSystemBlock(retrievedContextText: string | null) {
+const CANVAS_LABEL: Record<CanvasLock["type"], string> = {
+  lean: "Lean Canvas",
+  bmc: "Business Model Canvas",
+};
+
+const CANVAS_FIELDS: Record<CanvasLock["type"], string> = {
+  lean:
+    "Problem, Solution, Unique Value Proposition, Unfair Advantage, Channels, Customer Segments, Cost Structure, Revenue Streams, Key Metrics",
+  bmc:
+    "Key Partners, Key Activities, Key Resources, Value Propositions, Customer Relationships, Channels, Customer Segments, Cost Structure, Revenue Streams",
+};
+
+/**
+ * Text for the canvas-lock override block (see buildSystemBlock) — a
+ * founder-driven picker (mirroring a model-choice picker) overriding the
+ * agent's own Stage 0 canvas judgment call. Covers both cases with one
+ * instruction: locked from the very start (nothing to redo yet) and
+ * switched mid-conversation (Section 3 may already be underway or done
+ * under the other framework, and the two field sets don't map onto each
+ * other — Lean's Problem/Solution/Unfair-Advantage have no BMC
+ * equivalent, so silently remapping would mean inventing answers. The
+ * honest move is telling the founder and re-asking, not guessing).
+ */
+function canvasLockText(lock: CanvasLock): string {
+  const label = CANVAS_LABEL[lock.type];
+  return `CANVAS FRAMEWORK OVERRIDE: The founder has explicitly chosen ${label} for this session — this was not your own Stage 0 judgment call, and you must not question, reconsider, or re-run your own canvas-selection heuristic. This OVERRIDES the "keep canvas_type stable once set" instruction elsewhere in your instructions — that rule exists to stop you from second-guessing your OWN earlier decision, not to resist the founder's own explicit change. Set canvas_type to "${lock.type}" and canvas_selection_reasoning to a brief one-sentence note that this was the founder's own explicit choice, even if your canvas_type was previously set to something else.
+
+If Section 3 has already been substantively covered earlier in this conversation under a DIFFERENT framework than ${label}, tell the founder in one short sentence that you're switching frameworks, then restart Section 3 now — ask its questions fresh, one at a time as normal, using ${label}'s own fields (${CANVAS_FIELDS[lock.type]}) instead of continuing with the old framework's answers. Everything outside Section 3 (Problem, Users, and anything from Section 4 onward) is unaffected and should not be revisited.`;
+}
+
+function buildSystemBlock(
+  retrievedContextText: string | null,
+  canvasLock?: CanvasLock | null
+) {
   const blocks: Array<{
     type: "text";
     text: string;
@@ -46,6 +83,14 @@ function buildSystemBlock(retrievedContextText: string | null) {
   // turn as the conversation moves, unlike the main prompt above.
   if (retrievedContextText) {
     blocks.push({ type: "text", text: retrievedContextText });
+  }
+
+  // Also its own block, no cache_control — a founder can flip this
+  // mid-conversation via the canvas picker (setCanvasType), so it has to
+  // be re-evaluated fresh every turn rather than baked into the cached
+  // prompt block above.
+  if (canvasLock) {
+    blocks.push({ type: "text", text: canvasLockText(canvasLock) });
   }
 
   return blocks;
@@ -108,7 +153,8 @@ function isDegenerateTurn(turn: TurnEnvelope): boolean {
 const MAX_TURN_ATTEMPTS = 2;
 
 export async function runAgentTurn(
-  history: HistoryMessage[]
+  history: HistoryMessage[],
+  canvasLock?: CanvasLock | null
 ): Promise<TurnEnvelope> {
   const messages =
     history.length > 0
@@ -135,7 +181,7 @@ export async function runAgentTurn(
         effort: attempt === 1 ? (settings.agent_effort as AgentEffort) : "high",
         format: zodOutputFormat(TurnEnvelopeSchema),
       },
-      system: buildSystemBlock(retrievedContextText),
+      system: buildSystemBlock(retrievedContextText, canvasLock),
       messages,
     });
 

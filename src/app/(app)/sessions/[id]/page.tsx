@@ -11,6 +11,8 @@ import { stageLabel, statusLabel } from "@/lib/blueprint/labels";
 import { PendingMessageProvider } from "./pending-message-context";
 import { PendingUserBubble } from "./pending-user-bubble";
 import { GenerateBlueprintPanel } from "./generate-blueprint-panel";
+import { CanvasTypePicker } from "./canvas-type-picker";
+import type { CanvasChoice } from "@/lib/blueprint/canvas-choice";
 
 // Route segment config, not a plain export — this is what actually raises
 // the Vercel function timeout for Server Actions invoked from this page
@@ -48,7 +50,9 @@ export default async function SessionPage({
 
   const { data: session } = await supabase
     .from("sessions")
-    .select("id, title, domain, canvas_type, status, current_stage")
+    .select(
+      "id, title, domain, canvas_type, canvas_type_locked, status, current_stage"
+    )
     .eq("id", id)
     .single();
 
@@ -66,6 +70,9 @@ export default async function SessionPage({
 
   const isComplete = session.status === "complete";
   const isGenerating = session.status === "generating";
+  const canvasChoice: CanvasChoice = session.canvas_type_locked
+    ? (session.canvas_type as "lean" | "bmc")
+    : "auto";
   const boundSendMessage = sendMessage.bind(null, id);
   const boundRetryLastTurn = retryLastTurn.bind(null, id);
 
@@ -119,13 +126,18 @@ export default async function SessionPage({
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-8">
-      <div className="mb-4">
-        <h1 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">
-          {session.title || session.domain || "Untitled blueprint"}
-        </h1>
-        <p className="text-xs text-zinc-500 dark:text-zinc-500">
-          {stageLabel(session.current_stage)} · {statusLabel(session.status)}
-        </p>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">
+            {session.title || session.domain || "Untitled blueprint"}
+          </h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-500">
+            {stageLabel(session.current_stage)} · {statusLabel(session.status)}
+          </p>
+        </div>
+        {!isComplete && !isGenerating && (
+          <CanvasTypePicker sessionId={id} initialChoice={canvasChoice} />
+        )}
       </div>
 
       {isComplete && (

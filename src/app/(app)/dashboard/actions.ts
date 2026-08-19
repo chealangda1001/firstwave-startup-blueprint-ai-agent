@@ -3,9 +3,10 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { runAgentTurn } from "@/lib/blueprint/agent";
+import { runAgentTurn, type CanvasLock } from "@/lib/blueprint/agent";
+import type { CanvasChoice } from "@/lib/blueprint/canvas-choice";
 
-export async function createSession() {
+export async function createSession(formData?: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -15,12 +16,24 @@ export async function createSession() {
     redirect("/login");
   }
 
+  // Carries a canvas preference chosen before the founder even had an
+  // account — the homepage hero's CanvasPicker writes to localStorage,
+  // and the dashboard's "+ New session" form reads it back into this
+  // hidden field. Same-browser only: there's no session to attach the
+  // choice to any earlier than this, and email confirmation can happen on
+  // a different device.
+  const canvasChoice = (formData?.get("canvas_choice") as CanvasChoice | null) ?? "auto";
+  const isLocking = canvasChoice !== "auto";
+  const canvasLock: CanvasLock | null = isLocking ? { type: canvasChoice } : null;
+
   const { data: session, error } = await supabase
     .from("sessions")
     .insert({
       founder_id: user.id,
       status: "in_progress",
       current_stage: "stage_0_intake",
+      canvas_type_locked: isLocking,
+      canvas_type: isLocking ? canvasChoice : null,
     })
     .select("id")
     .single();
@@ -31,7 +44,7 @@ export async function createSession() {
 
   try {
     const startedAt = Date.now();
-    const opening = await runAgentTurn([]);
+    const opening = await runAgentTurn([], canvasLock);
     const responseTimeMs = Date.now() - startedAt;
 
     const { error: messagesError } = await supabase

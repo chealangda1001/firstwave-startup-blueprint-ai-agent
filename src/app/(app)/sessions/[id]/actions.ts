@@ -3,13 +3,88 @@
 import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { runAgentTurn, generateBlueprintArtifact } from "@/lib/blueprint/agent";
+import {
+  runAgentTurn,
+  generateBlueprintArtifact,
+  type CanvasLock,
+} from "@/lib/blueprint/agent";
 import { saveBlueprintArtifact } from "@/lib/blueprint/persist";
 import type { Database } from "@/types/database.types";
+import type { CanvasChoice } from "@/lib/blueprint/canvas-choice";
+
+function toCanvasLock(
+  canvasTypeLocked: boolean,
+  canvasType: string | null
+): CanvasLock | null {
+  if (!canvasTypeLocked || (canvasType !== "lean" && canvasType !== "bmc")) {
+    return null;
+  }
+  return { type: canvasType };
+}
 
 interface HistoryMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+/**
+ * Loads the transcript sent to the model, same as before, EXCEPT: a
+ * canvas-switch (setCanvasType) is stored as a role="log" row specifically
+ * so it never becomes a visible chat bubble — but role="log" rows are also
+ * excluded from this history entirely, which meant the model had a system
+ * instruction telling it to use the new framework with no actual
+ * conversational evidence backing it up, and its own prior assistant
+ * reply (which had said the OLD framework's name out loud) won that fight
+ * every time in testing. The fix: splice a visible marker onto the most
+ * recent user message when a switch happened since the last assistant
+ * reply — real evidence inside the turn the model is actually responding
+ * to, not just an instruction competing against its own remembered words.
+ * Never written back to the DB — session_messages.content stays exactly
+ * what the founder typed; this only affects what's sent to the API.
+ */
+async function loadHistoryForTurn(
+  supabase: SupabaseClient<Database>,
+  sessionId: string
+): Promise<HistoryMessage[]> {
+  const { data: priorMessages } = await supabase
+    .from("session_messages")
+    .select("role, content, created_at")
+    .eq("session_id", sessionId)
+    .in("role", ["user", "assistant"])
+    .order("created_at", { ascending: true });
+
+  const history: HistoryMessage[] = (priorMessages ?? []).map((m) => ({
+    role: m.role as "user" | "assistant",
+    content: m.content,
+  }));
+
+  if (!priorMessages || priorMessages.length === 0) {
+    return history;
+  }
+
+  const lastAssistantMsg = [...priorMessages].reverse().find((m) => m.role === "assistant");
+  const sinceIso = lastAssistantMsg?.created_at ?? priorMessages[0].created_at;
+
+  const { data: switchLog } = await supabase
+    .from("session_messages")
+    .select("content")
+    .eq("session_id", sessionId)
+    .eq("role", "log")
+    .ilike("content", "Switched%")
+    .gt("created_at", sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (switchLog) {
+    const lastIdx = history.length - 1;
+    history[lastIdx] = {
+      ...history[lastIdx],
+      content: `[${switchLog.content}]\n\n${history[lastIdx].content}`,
+    };
+  }
+
+  return history;
 }
 
 /**
@@ -39,13 +114,14 @@ async function runTurnAndPersist(
   supabase: SupabaseClient<Database>,
   sessionId: string,
   currentStage: string,
-  history: HistoryMessage[]
+  history: HistoryMessage[],
+  canvasLock: CanvasLock | null
 ) {
   let turn;
   const startedAt = Date.now();
   let responseTimeMs: number;
   try {
-    turn = await runAgentTurn(history);
+    turn = await runAgentTurn(history, canvasLock);
     responseTimeMs = Date.now() - startedAt;
   } catch (err) {
     console.error("runAgentTurn failed", err);
@@ -117,7 +193,7 @@ export async function sendMessage(sessionId: string, formData: FormData) {
 
   const { data: session } = await supabase
     .from("sessions")
-    .select("id, current_stage, status")
+    .select("id, current_stage, status, canvas_type, canvas_type_locked")
     .eq("id", sessionId)
     .single();
 
@@ -138,19 +214,15 @@ export async function sendMessage(sessionId: string, formData: FormData) {
     throw new Error(insertUserError.message);
   }
 
-  const { data: priorMessages } = await supabase
-    .from("session_messages")
-    .select("role, content")
-    .eq("session_id", sessionId)
-    .in("role", ["user", "assistant"])
-    .order("created_at", { ascending: true });
+  const history = await loadHistoryForTurn(supabase, sessionId);
 
-  const history = (priorMessages ?? []).map((m) => ({
-    role: m.role as "user" | "assistant",
-    content: m.content,
-  }));
-
-  await runTurnAndPersist(supabase, sessionId, session.current_stage, history);
+  await runTurnAndPersist(
+    supabase,
+    sessionId,
+    session.current_stage,
+    history,
+    toCanvasLock(session.canvas_type_locked, session.canvas_type)
+  );
   revalidatePath(`/sessions/${sessionId}`);
 }
 
@@ -169,7 +241,7 @@ export async function retryLastTurn(sessionId: string) {
 
   const { data: session } = await supabase
     .from("sessions")
-    .select("id, current_stage, status")
+    .select("id, current_stage, status, canvas_type, canvas_type_locked")
     .eq("id", sessionId)
     .single();
 
@@ -177,24 +249,20 @@ export async function retryLastTurn(sessionId: string) {
     return;
   }
 
-  const { data: priorMessages } = await supabase
-    .from("session_messages")
-    .select("role, content")
-    .eq("session_id", sessionId)
-    .in("role", ["user", "assistant"])
-    .order("created_at", { ascending: true });
-
-  const history = (priorMessages ?? []).map((m) => ({
-    role: m.role as "user" | "assistant",
-    content: m.content,
-  }));
+  const history = await loadHistoryForTurn(supabase, sessionId);
 
   // Nothing to retry if the last turn already got a reply.
   if (history.length === 0 || history[history.length - 1].role !== "user") {
     return;
   }
 
-  await runTurnAndPersist(supabase, sessionId, session.current_stage, history);
+  await runTurnAndPersist(
+    supabase,
+    sessionId,
+    session.current_stage,
+    history,
+    toCanvasLock(session.canvas_type_locked, session.canvas_type)
+  );
   revalidatePath(`/sessions/${sessionId}`);
 }
 
@@ -295,4 +363,72 @@ export async function generateBlueprintForSession(
 
   revalidatePath(`/sessions/${sessionId}`);
   return { ok: true };
+}
+
+/**
+ * Sets or clears the founder's explicit canvas-framework choice — the
+ * server side of the CanvasPicker in the session composer. "auto" clears
+ * the lock and lets the agent go back to deciding for itself (its own
+ * canvas_type output on the next turn takes over from there); "lean"/"bmc"
+ * locks it, and canvasLockText in agent.ts instructs the agent to respect
+ * it — including restarting Section 3 under the new framework if it had
+ * already been covered under a different one (per docs/ROADMAP.md
+ * discussion: the two field sets don't map onto each other, so silently
+ * carrying old answers forward would mean inventing data).
+ *
+ * A visible log line is inserted either way, both so the switch shows up
+ * in the transcript as a real event (not a silent DB flip) and so the
+ * founder's very next turn has a concrete signal that something changed,
+ * independent of whether the agent's own next reply mentions it.
+ */
+export async function setCanvasType(sessionId: string, choice: CanvasChoice) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: session } = await supabase
+    .from("sessions")
+    .select("id, current_stage, status, canvas_type, canvas_type_locked")
+    .eq("id", sessionId)
+    .single();
+
+  if (!session || session.status === "complete" || session.status === "generating") {
+    return;
+  }
+
+  const isLocking = choice !== "auto";
+  const nextCanvasType = isLocking ? choice : null;
+
+  const alreadyLockedToThis = isLocking && session.canvas_type_locked && session.canvas_type === nextCanvasType;
+  const alreadyAuto = !isLocking && !session.canvas_type_locked;
+  if (alreadyLockedToThis || alreadyAuto) {
+    // Nothing would actually change — skip both the write and the
+    // redundant "switched to X" log line.
+    return;
+  }
+
+  const { error } = await supabase
+    .from("sessions")
+    .update({
+      canvas_type_locked: isLocking,
+      canvas_type: nextCanvasType,
+    })
+    .eq("id", sessionId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await supabase.from("session_messages").insert({
+    session_id: sessionId,
+    role: "log",
+    stage: session.current_stage,
+    content: isLocking
+      ? `Switched to ${choice === "lean" ? "Lean Canvas" : "Business Model Canvas"}.`
+      : "Switched back to Auto — the agent will choose the canvas framework.",
+  });
+
+  revalidatePath(`/sessions/${sessionId}`);
 }

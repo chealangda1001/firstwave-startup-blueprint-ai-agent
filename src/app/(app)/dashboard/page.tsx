@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { createSession } from "./actions";
 import { SessionCard } from "./session-card";
+import { NewSessionForm } from "./new-session-form";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -20,14 +20,7 @@ export default async function DashboardPage() {
             Start a new session or pick up where you left off.
           </p>
         </div>
-        <form action={createSession}>
-          <button
-            type="submit"
-            className="rounded-full bg-zinc-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
-          >
-            + New session
-          </button>
-        </form>
+        <NewSessionForm />
       </div>
 
       {error && (

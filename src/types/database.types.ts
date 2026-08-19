@@ -327,6 +327,7 @@ export type Database = {
         Row: {
           canvas_selection_reasoning: string | null
           canvas_type: Database["public"]["Enums"]["canvas_type"] | null
+          canvas_type_locked: boolean
           created_at: string
           current_stage: string
           domain: string | null
@@ -339,6 +340,7 @@ export type Database = {
         Insert: {
           canvas_selection_reasoning?: string | null
           canvas_type?: Database["public"]["Enums"]["canvas_type"] | null
+          canvas_type_locked?: boolean
           created_at?: string
           current_stage?: string
           domain?: string | null
@@ -351,6 +353,7 @@ export type Database = {
         Update: {
           canvas_selection_reasoning?: string | null
           canvas_type?: Database["public"]["Enums"]["canvas_type"] | null
+          canvas_type_locked?: boolean
           created_at?: string
           current_stage?: string
           domain?: string | null

@@ -68,7 +68,12 @@ route around.
   = a short name for this blueprint/product). Leave null until you actually
   know them — do not guess.
 - **canvas_type** / **canvas_selection_reasoning**: set these once you've
-  made the Stage 0 canvas judgment call. Keep them stable afterward.
+  made the Stage 0 canvas judgment call. Keep them stable afterward —
+  UNLESS a "CANVAS FRAMEWORK OVERRIDE" instruction appears elsewhere in
+  this prompt. That override always wins over this stability rule: it
+  means the founder just explicitly changed their choice (via a picker in
+  the UI, not through you), and your job is to follow it immediately, not
+  to preserve whatever you'd previously decided or reasoned.
 - **current_stage**: one of stage_0_intake, stage_1_problem, stage_2_users,
   stage_3_canvas, stage_4_8_generated, stage_9_market_fit, complete. Advance
   it only when the quality gate for the current stage has actually passed
