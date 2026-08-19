@@ -154,6 +154,12 @@ export default async function BlueprintPage({
           >
             View printable canvas →
           </Link>
+          <Link
+            href={`/sessions/${id}/blueprint/workflow`}
+            className="rounded-full border border-black/[.12] bg-transparent px-4 py-2 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-white/[.16] dark:text-zinc-300 dark:hover:bg-zinc-900"
+          >
+            Marketing pipeline →
+          </Link>
         </div>
       </div>
 

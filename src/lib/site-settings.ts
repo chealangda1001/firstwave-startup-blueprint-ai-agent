@@ -11,6 +11,12 @@ export interface SiteSettings {
   artifact_model: string;
   artifact_effort: string;
   agent_thinking_enabled: boolean;
+  // The shared Managed Agents cloud environment every V2 pipeline role runs
+  // in (migration 0024) — null until scripts/setup-marketing-agents.ts has
+  // been run and the ID stored. Nullable rather than falling back to a
+  // fabricated default: an invalid environment ID would fail loudly at
+  // session-create time anyway, so there's no safe placeholder to fall back to.
+  pipeline_environment_id: string | null;
 }
 
 // Matches the column defaults in migrations 0006, 0018, and 0021 — used
@@ -31,6 +37,7 @@ const FALLBACK: SiteSettings = {
   artifact_model: "claude-opus-5",
   artifact_effort: "high",
   agent_thinking_enabled: false,
+  pipeline_environment_id: null,
 };
 
 /**
@@ -46,7 +53,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   const { data } = await supabase
     .from("site_settings")
     .select(
-      "app_name, hero_title, hero_subtitle, hero_description, agent_model, agent_effort, artifact_model, artifact_effort, agent_thinking_enabled"
+      "app_name, hero_title, hero_subtitle, hero_description, agent_model, agent_effort, artifact_model, artifact_effort, agent_thinking_enabled, pipeline_environment_id"
     )
     .eq("id", 1)
     .single();

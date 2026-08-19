@@ -211,6 +211,36 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_agents: {
+        Row: {
+          anthropic_agent_id: string
+          anthropic_agent_version: number | null
+          created_at: string
+          id: string
+          model: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          anthropic_agent_id: string
+          anthropic_agent_version?: number | null
+          created_at?: string
+          id?: string
+          model: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          anthropic_agent_id?: string
+          anthropic_agent_version?: number | null
+          created_at?: string
+          id?: string
+          model?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           company_name: string | null
@@ -385,6 +415,7 @@ export type Database = {
           hero_subtitle: string
           hero_title: string
           id: number
+          pipeline_environment_id: string | null
           updated_at: string
         }
         Insert: {
@@ -398,6 +429,7 @@ export type Database = {
           hero_subtitle?: string
           hero_title?: string
           id?: number
+          pipeline_environment_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -411,9 +443,153 @@ export type Database = {
           hero_subtitle?: string
           hero_title?: string
           id?: number
+          pipeline_environment_id?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      workflow_approvals: {
+        Row: {
+          decided_at: string
+          decided_by: string
+          decision: string
+          id: string
+          note: string | null
+          workflow_node_id: string
+        }
+        Insert: {
+          decided_at?: string
+          decided_by: string
+          decision: string
+          id?: string
+          note?: string | null
+          workflow_node_id: string
+        }
+        Update: {
+          decided_at?: string
+          decided_by?: string
+          decision?: string
+          id?: string
+          note?: string | null
+          workflow_node_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_approvals_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_approvals_workflow_node_id_fkey"
+            columns: ["workflow_node_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_nodes: {
+        Row: {
+          artifact: Json | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          log: Json
+          managed_agent_session_id: string | null
+          role: string
+          round_number: number
+          started_at: string | null
+          status: Database["public"]["Enums"]["workflow_node_status"]
+          updated_at: string
+          workflow_run_id: string
+        }
+        Insert: {
+          artifact?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          log?: Json
+          managed_agent_session_id?: string | null
+          role: string
+          round_number?: number
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["workflow_node_status"]
+          updated_at?: string
+          workflow_run_id: string
+        }
+        Update: {
+          artifact?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          log?: Json
+          managed_agent_session_id?: string | null
+          role?: string
+          round_number?: number
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["workflow_node_status"]
+          updated_at?: string
+          workflow_run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_nodes_workflow_run_id_fkey"
+            columns: ["workflow_run_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_runs: {
+        Row: {
+          blueprint_id: string
+          created_at: string
+          founder_id: string
+          id: string
+          pipeline_type: Database["public"]["Enums"]["workflow_pipeline_type"]
+          status: Database["public"]["Enums"]["workflow_run_status"]
+          updated_at: string
+        }
+        Insert: {
+          blueprint_id: string
+          created_at?: string
+          founder_id: string
+          id?: string
+          pipeline_type: Database["public"]["Enums"]["workflow_pipeline_type"]
+          status?: Database["public"]["Enums"]["workflow_run_status"]
+          updated_at?: string
+        }
+        Update: {
+          blueprint_id?: string
+          created_at?: string
+          founder_id?: string
+          id?: string
+          pipeline_type?: Database["public"]["Enums"]["workflow_pipeline_type"]
+          status?: Database["public"]["Enums"]["workflow_run_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_runs_blueprint_id_fkey"
+            columns: ["blueprint_id"]
+            isOneToOne: false
+            referencedRelation: "blueprints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_runs_founder_id_fkey"
+            columns: ["founder_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -446,6 +622,18 @@ export type Database = {
         | "lead_through_example"
       message_role: "user" | "assistant" | "log"
       session_status: "in_progress" | "complete" | "abandoned" | "generating"
+      workflow_node_status:
+        | "waiting"
+        | "running"
+        | "complete"
+        | "paused"
+        | "error"
+      workflow_pipeline_type: "marketing" | "product"
+      workflow_run_status:
+        | "running"
+        | "paused_for_approval"
+        | "complete"
+        | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -585,6 +773,20 @@ export const Constants = {
       ],
       message_role: ["user", "assistant", "log"],
       session_status: ["in_progress", "complete", "abandoned", "generating"],
+      workflow_node_status: [
+        "waiting",
+        "running",
+        "complete",
+        "paused",
+        "error",
+      ],
+      workflow_pipeline_type: ["marketing", "product"],
+      workflow_run_status: [
+        "running",
+        "paused_for_approval",
+        "complete",
+        "failed",
+      ],
     },
   },
 } as const
@@ -595,3 +797,9 @@ export type ConfidenceLevel = Database["public"]["Enums"]["confidence_level"]
 export type MessageRole = Database["public"]["Enums"]["message_role"]
 export type KnowledgeBaseCardType =
   Database["public"]["Enums"]["knowledge_base_card_type"]
+export type WorkflowPipelineType =
+  Database["public"]["Enums"]["workflow_pipeline_type"]
+export type WorkflowRunStatus =
+  Database["public"]["Enums"]["workflow_run_status"]
+export type WorkflowNodeStatus =
+  Database["public"]["Enums"]["workflow_node_status"]
